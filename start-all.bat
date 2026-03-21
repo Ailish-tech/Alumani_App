@@ -34,13 +34,28 @@ echo [2/4] Waiting for DynamoDB to be ready...
 timeout /t 3 /nobreak >nul
 
 :: ─── Step 3: Create table + seed data ──────────────────────────────────
-echo [3/4] Creating DynamoDB table + seeding test users...
+echo [3/5] Creating DynamoDB table...
 cd /d "%~dp0backend"
 call npx ts-node scripts/createTable.ts
 echo.
+echo [4/5] Seeding test data...
+call npx ts-node scripts/seed.ts
+echo.
 
-:: ─── Step 4: Start Backend + Frontend in separate windows ──────────────
-echo [4/4] Launching Backend + Frontend...
+:: ─── Step 5: Auto-detect LAN IP and update frontend api.ts ──────────────
+echo [5/5] Detecting LAN IP and launching services...
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /R /C:"IPv4 Address" ^| findstr /V "127.0.0"') do (
+    set "LAN_IP=%%a"
+)
+set "LAN_IP=%LAN_IP: =%"
+if not "%LAN_IP%"=="" (
+    echo       Detected LAN IP: %LAN_IP%
+    cd /d "%~dp0frontend\src\services"
+    powershell -Command "(Get-Content api.ts) -replace \"const LAN_IP = '.*'\", \"const LAN_IP = '%LAN_IP%'\" | Set-Content api.ts"
+    echo       Updated frontend api.ts with LAN IP
+) else (
+    echo       WARNING: Could not detect LAN IP. Using existing value in api.ts
+)
 echo.
 
 :: Start Backend (new window)
@@ -49,8 +64,8 @@ start "AlumniConnect Backend" cmd /k "cd /d "%~dp0backend" && echo. && echo  Bac
 :: Wait a moment for backend to initialize
 timeout /t 3 /nobreak >nul
 
-:: Start Frontend with QR code (new window)
-start "AlumniConnect Frontend" cmd /k "cd /d "%~dp0frontend" && echo. && echo  Frontend starting with Expo (QR Code)... && echo. && npx expo start"
+:: Start Frontend with cache clear (new window)
+start "AlumniConnect Frontend" cmd /k "cd /d "%~dp0frontend" && echo. && echo  Frontend starting with Expo (QR Code + Cache Clear)... && echo. && npx expo start -c"
 
 echo.
 echo  ╔══════════════════════════════════════════╗
@@ -60,6 +75,12 @@ echo  ║                                          ║
 echo  ║  DynamoDB Local  :  http://localhost:8000 ║
 echo  ║  Backend API     :  http://localhost:3000 ║
 echo  ║  Frontend (Expo) :  See QR in Expo window ║
+echo  ║                                          ║
+echo  ║  Test Logins (type in email field):       ║
+echo  ║    admin    = Admin role                  ║
+echo  ║    alumni   = Alumni role                 ║
+echo  ║    faculty  = Faculty role                ║
+echo  ║    (blank)  = Student role                ║
 echo  ║                                          ║
 echo  ║  Scan the QR code with Expo Go app       ║
 echo  ║  to open on your phone!                  ║
