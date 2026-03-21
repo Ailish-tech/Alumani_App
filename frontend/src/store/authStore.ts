@@ -20,6 +20,7 @@ interface AuthState {
   login: (accessToken: string, userData: User) => Promise<void>;
   logout: () => Promise<void>;
   devLogin: (userId: string, role: Role) => Promise<void>;
+  claimAccount: (collegeId: string) => Promise<void>;
   fetchProfile: () => Promise<void>;
   register: (data: {
     fullName: string;
@@ -85,6 +86,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             : regErr?.response?.data?.error || regErr?.message || 'Registration failed'
         );
       }
+    }
+  },
+
+  claimAccount: async (collegeId: string) => {
+    set({ isLoading: true });
+    try {
+      // Use a dev token for the claim request (claim route uses firebaseOnlyAuth)
+      const devToken = `dev:claim-${Date.now()}:STUDENT`;
+      set({ accessToken: devToken });
+
+      const res = await api.post('/auth/claim', { collegeId });
+      const claimData = res.data.data;
+
+      // Now fetch the full user profile that was created
+      const profileRes = await api.get('/auth/me');
+      const user = profileRes.data.data;
+
+      await SecureStore.setItemAsync(TOKEN_KEY, devToken);
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+      set({ user, isAuthenticated: true, isLoading: false });
+    } catch (err: any) {
+      set({ isLoading: false, accessToken: null });
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Claim failed';
+      throw new Error(msg);
     }
   },
 

@@ -31,9 +31,13 @@ export default function LoginScreen({ navigation }: Props) {
   const { devLogin, isLoading } = useAuthStore();
 
   const handleLogin = async () => {
-    // Dev mode: parse role from email
-    const id = email.trim().toLowerCase() || 'mock-student-001';
-    
+    const id = email.trim().toLowerCase();
+    if (!id) {
+      Alert.alert('Missing', 'Please enter your User ID or College ID.');
+      return;
+    }
+
+    // Determine role from the ID for the dev token header
     let role = Role.STUDENT;
     if (id.includes('admin')) {
       role = Role.ADMIN;
@@ -42,11 +46,11 @@ export default function LoginScreen({ navigation }: Props) {
     } else if (id.includes('faculty')) {
       role = Role.FACULTY;
     }
-    
+
     try {
       await devLogin(id, role);
     } catch (err: any) {
-      Alert.alert('Login Failed', err?.message || 'Could not connect to the server.');
+      Alert.alert('Login Failed', err?.message || 'Could not connect to the server. Make sure the backend is running.');
     }
   };
 

@@ -3,138 +3,216 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
-
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
-import { Role } from '../../types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../types/navigation.types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
-const ROLES: { label: string; value: Role; icon: string; color: string }[] = [
-  { label: 'Student', value: Role.STUDENT, icon: 'school', color: Colors.roleStudent },
-  { label: 'Alumni', value: Role.ALUMNI, icon: 'ribbon', color: Colors.roleAlumni },
-  { label: 'Faculty', value: Role.FACULTY, icon: 'briefcase', color: Colors.roleFaculty },
-];
-
 export default function SignupScreen({ navigation }: Props) {
-  const { register, devLogin, isLoading } = useAuthStore();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>(Role.STUDENT);
-  const [domain, setDomain] = useState('');
+  const { claimAccount, isLoading } = useAuthStore();
+  const [collegeId, setCollegeId] = useState('');
 
-  const handleRegister = async () => {
-    if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Validation', 'Name and email are required.');
+  const handleClaim = async () => {
+    const id = collegeId.trim();
+    if (!id) {
+      Alert.alert('Missing ID', 'Please enter your College ID / Roll Number.');
       return;
     }
     try {
-      // Dev mode: first devLogin to get a token, then register
-      const devId = `user-${Date.now()}`;
-      await devLogin(devId, role);
-      await register({ fullName: fullName.trim(), email: email.trim(), role, domain: domain.trim() });
+      await claimAccount(id);
+      // Navigation is handled by the auth state change in RootNavigator
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Registration failed.');
+      Alert.alert('Claim Failed', e?.message || 'Could not claim this account.');
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
+      {/* Ambient Glow */}
+      <View style={s.glowTop} />
+      <View style={s.glowBottom} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
-          {/* Header */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+
+          {/* Back Button */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join your college network</Text>
 
-          {/* Full Name */}
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="person-outline" size={20} color={Colors.textMuted} />
-            <TextInput style={styles.input} value={fullName} onChangeText={setFullName}
-              placeholder="Your full name" placeholderTextColor={Colors.textMuted} />
+          {/* Hero */}
+          <View style={s.heroIcon}>
+            <Ionicons name="id-card" size={40} color="#a476ff" />
+          </View>
+          <Text style={s.title}>Claim Your Account</Text>
+          <Text style={s.subtitle}>
+            Enter the College ID / Roll Number provided by your institution to activate your account.
+          </Text>
+
+          {/* How it works */}
+          <View style={s.infoCard}>
+            <Text style={s.infoTitle}>📋 How it works</Text>
+            <View style={s.step}>
+              <View style={s.stepDot}><Text style={s.stepNum}>1</Text></View>
+              <Text style={s.stepText}>Admin uploads a master list of students, alumni & faculty</Text>
+            </View>
+            <View style={s.step}>
+              <View style={s.stepDot}><Text style={s.stepNum}>2</Text></View>
+              <Text style={s.stepText}>You enter your College ID below to verify your identity</Text>
+            </View>
+            <View style={s.step}>
+              <View style={[s.stepDot, { backgroundColor: '#4CAF5030' }]}><Text style={[s.stepNum, { color: '#4CAF50' }]}>3</Text></View>
+              <Text style={s.stepText}>Your role (Student / Alumni / Faculty) is assigned automatically</Text>
+            </View>
           </View>
 
-          {/* Email */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="mail-outline" size={20} color={Colors.textMuted} />
-            <TextInput style={styles.input} value={email} onChangeText={setEmail}
-              placeholder="you@college.edu" placeholderTextColor={Colors.textMuted}
-              keyboardType="email-address" autoCapitalize="none" />
-          </View>
-
-          {/* Role */}
-          <Text style={styles.label}>Role</Text>
-          <View style={styles.roleRow}>
-            {ROLES.map((r) => (
-              <TouchableOpacity key={r.value}
-                style={[styles.roleChip, role === r.value && { borderColor: r.color, backgroundColor: `${r.color}15` }]}
-                onPress={() => setRole(r.value)}>
-                <Ionicons name={r.icon as any} size={20} color={role === r.value ? r.color : Colors.textMuted} />
-                <Text style={[styles.roleChipText, role === r.value && { color: r.color }]}>{r.label}</Text>
+          {/* College ID Input */}
+          <Text style={s.label}>COLLEGE ID / ROLL NUMBER</Text>
+          <View style={s.inputBox}>
+            <Ionicons name="school-outline" size={20} color={Colors.textMuted} />
+            <TextInput
+              style={s.input}
+              value={collegeId}
+              onChangeText={setCollegeId}
+              placeholder="e.g. CS001, FAC01, 2022EE042"
+              placeholderTextColor={Colors.textMuted}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            {collegeId.length > 0 && (
+              <TouchableOpacity onPress={() => setCollegeId('')}>
+                <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
-            ))}
+            )}
           </View>
 
-          {/* Domain */}
-          <Text style={styles.label}>Domain (optional)</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="briefcase-outline" size={20} color={Colors.textMuted} />
-            <TextInput style={styles.input} value={domain} onChangeText={setDomain}
-              placeholder="e.g. Software Engineering" placeholderTextColor={Colors.textMuted} />
-          </View>
-
-          {/* Register Button */}
-          <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={isLoading} activeOpacity={0.8}>
-            <View style={styles.registerGradient}>
-              {isLoading ? <ActivityIndicator color="#fff" /> : (
+          {/* Claim Button */}
+          <TouchableOpacity
+            style={[s.claimBtn, (!collegeId.trim() || isLoading) && s.claimBtnDisabled]}
+            onPress={handleClaim}
+            disabled={!collegeId.trim() || isLoading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#a476ff', '#7c4dff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.claimGradient}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
                 <>
-                  <Ionicons name="person-add-outline" size={20} color="#fff" />
-                  <Text style={styles.registerText}>Create Account</Text>
+                  <Ionicons name="checkmark-circle" size={22} color="#fff" />
+                  <Text style={s.claimText}>Verify & Activate</Text>
                 </>
               )}
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignItems: 'center', marginTop: Spacing.md }}>
-            <Text style={styles.linkText}>Already have an account? <Text style={{ color: Colors.primary }}>Sign In</Text></Text>
+          {/* Back to Login */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.linkRow}>
+            <Text style={s.linkText}>
+              Already claimed? <Text style={{ color: '#a476ff', fontWeight: '700' }}>Sign In</Text>
+            </Text>
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  content: { padding: Spacing.lg, paddingTop: 60 },
-  backBtn: { marginBottom: Spacing.md },
-  title: { fontSize: FontSize.hero, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -1 },
-  subtitle: { fontSize: FontSize.md, color: Colors.textSecondary, marginBottom: Spacing.lg },
-  label: { fontSize: FontSize.sm, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginTop: Spacing.md, marginBottom: Spacing.xs },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#12121d' },
+
+  glowTop: {
+    position: 'absolute', top: -80, left: -80,
+    width: 250, height: 250, borderRadius: 125,
+    backgroundColor: '#a476ff', opacity: 0.06,
+  },
+  glowBottom: {
+    position: 'absolute', bottom: -60, right: -60,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: '#7c4dff', opacity: 0.05,
+  },
+
+  content: { padding: Spacing.lg, paddingTop: 60, paddingBottom: 100 },
+
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+
+  heroIcon: {
+    width: 72, height: 72, borderRadius: 20,
+    backgroundColor: 'rgba(164, 118, 255, 0.12)',
+    alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'center', marginBottom: Spacing.md,
+  },
+
+  title: {
+    fontSize: 28, fontWeight: '800', color: '#e6e1e6',
+    textAlign: 'center', letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14, color: '#9e9e9e', textAlign: 'center',
+    lineHeight: 20, marginTop: 8, marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+  },
+
+  infoCard: {
+    backgroundColor: 'rgba(31, 31, 41, 0.6)',
+    borderRadius: 16, padding: Spacing.md,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: Spacing.lg,
+  },
+  infoTitle: {
+    fontSize: 15, fontWeight: '700', color: '#e6e1e6',
+    marginBottom: Spacing.sm,
+  },
+  step: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 6,
+  },
+  stepDot: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(164, 118, 255, 0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stepNum: { fontSize: 13, fontWeight: '800', color: '#a476ff' },
+  stepText: { flex: 1, fontSize: 13, color: '#b0b0b0', lineHeight: 18 },
+
+  label: {
+    fontSize: 11, color: '#9e9e9e', letterSpacing: 1.5,
+    fontWeight: '700', marginBottom: 8,
+  },
   inputBox: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.bgInput, borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(31, 31, 41, 0.8)',
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: 'rgba(164, 118, 255, 0.25)',
+    marginBottom: Spacing.lg,
   },
-  input: { flex: 1, color: Colors.textPrimary, fontSize: FontSize.md },
-  roleRow: { flexDirection: 'row', gap: Spacing.sm },
-  roleChip: {
-    flex: 1, alignItems: 'center', gap: 4, padding: Spacing.sm,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md,
-    borderWidth: 1.5, borderColor: Colors.border,
+  input: {
+    flex: 1, color: '#e6e1e6', fontSize: 16,
+    fontWeight: '600', letterSpacing: 1,
   },
-  roleChipText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted },
-  registerBtn: { marginTop: Spacing.xl, borderRadius: BorderRadius.md, overflow: 'hidden' },
-  registerGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, backgroundColor: Colors.primary },
-  registerText: { fontSize: FontSize.lg, fontWeight: '700', color: '#fff' },
-  linkText: { fontSize: FontSize.sm, color: Colors.textMuted },
+
+  claimBtn: { borderRadius: 14, overflow: 'hidden', marginBottom: Spacing.md },
+  claimBtnDisabled: { opacity: 0.4 },
+  claimGradient: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 16,
+  },
+  claimText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+
+  linkRow: { alignItems: 'center', marginTop: Spacing.sm },
+  linkText: { fontSize: 14, color: '#9e9e9e' },
 });
