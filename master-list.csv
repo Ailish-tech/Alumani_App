@@ -1,0 +1,31 @@
+CollegeId,Name,GradYear,BaseRole
+24cs008,Ailish Singh,2028,STUDENT
+24cs069,Adnaan,2028,STUDENT
+24cs025,Bhavya Gupta,2028,STUDENT
+24cs101,Rohan Mehta,2028,STUDENT
+23cs055,Sneha Kapoor,2027,STUDENT
+23cs089,Vikram Rajput,2027,STUDENT
+25cs012,Ananya Pandey,2029,STUDENT
+25cs044,Karan Desai,2029,STUDENT
+22cs110,Pooja Joshi,2026,STUDENT
+22cs005,Arjun Reddy,2026,STUDENT
+25cs008,Rahul Kumawat,2022,ALUMNI
+18cs045,Neha Sharma,2022,ALUMNI
+19cs012,Amit Bansal,2023,ALUMNI
+17cs099,Vikas Khanna,2021,ALUMNI
+20cs033,Priya Tiwari,2024,ALUMNI
+16cs001,Siddharth Jain,2020,ALUMNI
+21cs077,Kavya Singh,2025,ALUMNI
+19cs050,Rajat Verma,2023,ALUMNI
+18cs088,Ishaan Awasthi,2022,ALUMNI
+15cs020,Meera Rajput,2019,ALUMNI
+25cs009,Anna,0,FACULTY
+FAC-1002,Prof. Suresh Dayal,0,FACULTY
+FAC-1003,Prof. Gopi Nath,0,FACULTY
+FAC-1004,Dr. Meenakshi Iyer,0,FACULTY
+FAC-1005,Prof. Rajesh Kumar,0,FACULTY
+FAC-1006,Dr. Sunita Rao,0,FACULTY
+FAC-1007,Prof. Anil Kapoor,0,FACULTY
+FAC-1008,Dr. Vikram Singh,0,FACULTY
+FAC-1009,Prof. Anjali Desai,0,FACULTY
+FAC-1010,Dr. Rakesh Jhunjhunwala,0,FACULTY
