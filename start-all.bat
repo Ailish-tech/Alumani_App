@@ -33,17 +33,14 @@ echo.
 echo [2/4] Waiting for DynamoDB to be ready...
 timeout /t 3 /nobreak >nul
 
-:: ─── Step 3: Create table + seed data ──────────────────────────────────
-echo [3/5] Creating DynamoDB table...
+:: ─── Step 3: Create table (empty) ───────────────────────────────────
+echo [3/4] Creating DynamoDB table (empty)...
 cd /d "%~dp0backend"
 call npx ts-node scripts/createTable.ts
 echo.
-echo [4/5] Seeding test data...
-call npx ts-node scripts/seed.ts
-echo.
 
-:: ─── Step 5: Auto-detect LAN IP and update frontend api.ts ──────────────
-echo [5/5] Detecting LAN IP and launching services...
+:: ─── Step 4: Auto-detect LAN IP and launch services ────────────────
+echo [4/4] Detecting LAN IP and launching services...
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /R /C:"IPv4 Address" ^| findstr /V "127.0.0"') do (
     set "LAN_IP=%%a"
 )

@@ -19,7 +19,7 @@ import {
   DescribeTableCommand,
   DeleteTableCommand,
 } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -105,101 +105,6 @@ async function createTable(): Promise<void> {
   console.log(`✅ Table '${TABLE_NAME}' created with GSI1 + GSI2!`);
 }
 
-async function seedTestUsers(): Promise<void> {
-  const now = new Date().toISOString();
-
-  const testUsers = [
-    {
-      PK: 'USER#mock-user-001',
-      SK: 'PROFILE',
-      GSI1PK: 'ROLE#STUDENT',
-      GSI1SK: 'SCORE#0',
-      entityType: 'USER',
-      id: 'mock-user-001',
-      email: 'student@test.local',
-      role: 'STUDENT',
-      fullName: 'Test Student',
-      profilePicUrl: '',
-      skills: ['JavaScript', 'React Native'],
-      domain: 'Software Engineering',
-      reputationScore: 0,
-      studentsGuided: 0,
-      isBanned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      PK: 'USER#mock-alumni-001',
-      SK: 'PROFILE',
-      GSI1PK: 'ROLE#ALUMNI',
-      GSI1SK: 'SCORE#15',
-      entityType: 'USER',
-      id: 'mock-alumni-001',
-      email: 'alumni@test.local',
-      role: 'ALUMNI',
-      fullName: 'Test Alumni',
-      profilePicUrl: '',
-      skills: ['Node.js', 'AWS', 'System Design'],
-      domain: 'Software Engineering',
-      reputationScore: 15,
-      studentsGuided: 8,
-      isBanned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      PK: 'USER#mock-faculty-001',
-      SK: 'PROFILE',
-      GSI1PK: 'ROLE#FACULTY',
-      GSI1SK: 'SCORE#25',
-      entityType: 'USER',
-      id: 'mock-faculty-001',
-      email: 'faculty@test.local',
-      role: 'FACULTY',
-      fullName: 'Dr. Test Faculty',
-      profilePicUrl: '',
-      skills: ['Machine Learning', 'Data Science', 'Python'],
-      domain: 'Data Science',
-      reputationScore: 25,
-      studentsGuided: 20,
-      isBanned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      PK: 'USER#mock-admin-001',
-      SK: 'PROFILE',
-      GSI1PK: 'ROLE#ADMIN',
-      GSI1SK: 'SCORE#0',
-      entityType: 'USER',
-      id: 'mock-admin-001',
-      email: 'admin@test.local',
-      role: 'ADMIN',
-      fullName: 'Test Admin',
-      profilePicUrl: '',
-      skills: [],
-      domain: 'Administration',
-      reputationScore: 0,
-      studentsGuided: 0,
-      isBanned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-
-  for (const user of testUsers) {
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: user,
-      })
-    );
-    console.log(`  👤 Seeded: ${user.fullName} (${user.role})`);
-  }
-
-  console.log(`\n✅ Seeded ${testUsers.length} test users.`);
-}
-
 async function main(): Promise<void> {
   console.log('\n🚀 AlumniConnect — DynamoDB Table Bootstrap\n');
   console.log(`  Endpoint: ${process.env.DYNAMO_ENDPOINT || 'http://localhost:8000'}`);
@@ -208,9 +113,8 @@ async function main(): Promise<void> {
   try {
     await deleteTableIfExists();
     await createTable();
-    await seedTestUsers();
 
-    console.log('\n✅ Bootstrap complete! You can now run: npm run dev\n');
+    console.log('\n✅ Bootstrap complete! Empty database ready. You can now run: npm run dev\n');
   } catch (error: any) {
     console.error('\n❌ Bootstrap failed:', error.message);
     console.error(
