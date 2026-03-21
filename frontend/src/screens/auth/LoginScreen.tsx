@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
@@ -42,7 +43,11 @@ export default function LoginScreen({ navigation }: Props) {
       role = Role.FACULTY;
     }
     
-    await devLogin(id, role);
+    try {
+      await devLogin(id, role);
+    } catch (err: any) {
+      Alert.alert('Login Failed', err?.message || 'Could not connect to the server.');
+    }
   };
 
   return (

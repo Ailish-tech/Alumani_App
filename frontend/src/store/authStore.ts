@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {
-      // Profile doesn't exist yet — auto-register in DynamoDB
+      // Profile doesn't exist yet — register in DynamoDB
       try {
         const regRes = await api.post('/auth/register', {
           fullName: userId,
@@ -75,24 +75,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await SecureStore.setItemAsync(TOKEN_KEY, devToken);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
         set({ user, isAuthenticated: true, isLoading: false });
-      } catch (regErr) {
-        // Registration also failed — use local fallback (offline mode)
-        console.warn('[Auth] Dev register failed, using local fallback:', regErr);
-        const fallbackUser: User = {
-          id: userId,
-          email: `${userId}@dev.local`,
-          role,
-          fullName: userId,
-          profilePicUrl: '',
-          skills: [],
-          domain: '',
-          reputationScore: 0,
-          studentsGuided: 0,
-          isBanned: false,
-        };
-        await SecureStore.setItemAsync(TOKEN_KEY, devToken);
-        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(fallbackUser));
-        set({ user: fallbackUser, isAuthenticated: true, isLoading: false });
+      } catch (regErr: any) {
+        // Backend is genuinely unreachable — surface the error
+        console.error('[Auth] Dev login failed:', regErr);
+        set({ isLoading: false });
+        throw new Error(
+          regErr?.message?.includes('Network')
+            ? 'Cannot reach the backend server. Make sure your backend (npm run dev) and DynamoDB Local are running.'
+            : regErr?.response?.data?.error || regErr?.message || 'Registration failed'
+        );
       }
     }
   },
