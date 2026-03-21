@@ -96,6 +96,24 @@ export default function EditProfileScreen({ navigation }: any) {
     }
     setIsSaving(true);
     try {
+      if (user?.email?.endsWith('@dev.local')) {
+        // Dev mode bypass for mock users
+        const updatedUser = {
+          ...user,
+          fullName: fullName.trim(),
+          domain: domain.trim(),
+          skills,
+          profilePicUrl: profilePicUri,
+          bio: bio.trim(),
+          workplace: workplace.trim(),
+        };
+        useAuthStore.setState({ user: updatedUser });
+        Alert.alert('Saved! ✅', 'Your profile has been updated locally.');
+        navigation.goBack();
+        setIsSaving(false);
+        return;
+      }
+
       await api.patch('/auth/me', {
         fullName: fullName.trim(),
         domain: domain.trim(),
