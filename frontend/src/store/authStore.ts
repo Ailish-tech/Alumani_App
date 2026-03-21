@@ -92,14 +92,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   claimAccount: async (collegeId: string) => {
     set({ isLoading: true });
     try {
-      // Use a dev token for the claim request (claim route uses firebaseOnlyAuth)
-      const devToken = `dev:claim-${Date.now()}:STUDENT`;
+      // Use the collegeId as the uid so login with the same ID finds the same profile
+      const devToken = `dev:${collegeId.toLowerCase()}:STUDENT`;
       set({ accessToken: devToken });
 
       const res = await api.post('/auth/claim', { collegeId });
       const claimData = res.data.data;
 
-      // Now fetch the full user profile that was created
+      // Fetch the full user profile that was created (USER#{collegeId})
       const profileRes = await api.get('/auth/me');
       const user = profileRes.data.data;
 
