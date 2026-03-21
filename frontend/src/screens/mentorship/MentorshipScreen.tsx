@@ -438,16 +438,24 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: mm.onSurface, fontSize: 14 },
 
-  // Tabs (underline style)
+  // Tabs (pill style — prominent)
   tabBar: {
-    flexDirection: 'row', gap: 28,
-    borderBottomWidth: 0.5, borderBottomColor: `${mm.outlineVariant}15`,
+    flexDirection: 'row', gap: 10,
+    backgroundColor: mm.surfaceContainerLow,
+    borderRadius: 14, padding: 4,
     marginHorizontal: 16, marginBottom: 24,
   },
-  tab: { paddingBottom: 14 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: mm.primary },
-  tabText: { fontSize: 17, fontWeight: '700', color: mm.outline },
-  tabTextActive: { color: mm.primary },
+  tab: {
+    flex: 1, paddingVertical: 12,
+    borderRadius: 12, alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: mm.primary,
+    shadowColor: mm.primary, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+  },
+  tabText: { fontSize: 14, fontWeight: '700', color: mm.outline },
+  tabTextActive: { color: '#ffffff' },
 
   // Recommended section
   recSection: { marginBottom: 28 },
