@@ -116,35 +116,35 @@ export async function firebaseOnlyAuth(
 ): Promise<void> {
   try {
     const isDev = process.env.NODE_ENV === 'development';
-    const admin = getFirebaseAdmin();
-    const isFirebaseReady = admin.apps && admin.apps.length > 0;
-
     let authUser: AuthUser;
 
-    if (isDev && !isFirebaseReady) {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer dev:')) {
-        const parts = authHeader.replace('Bearer dev:', '').split(':');
-        authUser = {
-          uid: parts[0] || process.env.MOCK_USER_ID || 'mock-user-001',
-          role: (parts[1] as Role) || Role.STUDENT,
-          email: `${parts[0] || 'mock'}@dev.local`,
-        };
-      } else {
-        authUser = {
-          uid: process.env.MOCK_USER_ID || 'mock-user-001',
-          role: Role.STUDENT,
-          email: 'mock@dev.local',
-        };
-      }
+    const authHeader = req.headers.authorization;
+
+    // ── Development: Check for dev tokens FIRST (same as authMiddleware) ──
+    if (isDev && authHeader && authHeader.startsWith('Bearer dev:')) {
+      const parts = authHeader.replace('Bearer dev:', '').split(':');
+      authUser = {
+        uid: parts[0] || process.env.MOCK_USER_ID || 'mock-user-001',
+        role: (parts[1] as Role) || Role.STUDENT,
+        email: `${parts[0] || 'mock'}@dev.local`,
+      };
+      console.log(`🔓 [DEV] firebaseOnlyAuth → uid=${authUser.uid}, role=${authUser.role}`);
+    } else if (isDev && !authHeader) {
+      // No auth header in dev mode — use fallback mock user
+      authUser = {
+        uid: process.env.MOCK_USER_ID || 'mock-user-001',
+        role: Role.STUDENT,
+        email: 'mock@dev.local',
+      };
     } else {
-      const authHeader = req.headers.authorization;
+      // ── Firebase Verification (production, or real Firebase tokens in dev) ──
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         throw new UnauthorizedError('Missing or malformed Authorization header');
       }
       const token = authHeader.split('Bearer ')[1];
       if (!token) throw new UnauthorizedError('Missing token');
 
+      const admin = getFirebaseAdmin();
       const decodedToken = await admin.auth().verifyIdToken(token);
       authUser = {
         uid: decodedToken.uid,
