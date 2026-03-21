@@ -30,9 +30,19 @@ export default function LoginScreen({ navigation }: Props) {
   const { devLogin, isLoading } = useAuthStore();
 
   const handleLogin = async () => {
-    // Dev mode: use mock credentials
-    const id = email.trim() || 'mock-student-001';
-    await devLogin(id, Role.STUDENT);
+    // Dev mode: parse role from email
+    const id = email.trim().toLowerCase() || 'mock-student-001';
+    
+    let role = Role.STUDENT;
+    if (id.includes('admin')) {
+      role = Role.ADMIN;
+    } else if (id.includes('alumni')) {
+      role = Role.ALUMNI;
+    } else if (id.includes('faculty')) {
+      role = Role.FACULTY;
+    }
+    
+    await devLogin(id, role);
   };
 
   return (
