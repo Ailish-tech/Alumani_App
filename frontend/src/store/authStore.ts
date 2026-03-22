@@ -55,36 +55,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   devLogin: async (userId: string, role: Role) => {
-    const devToken = `dev:${userId}:${role}`;
+    const id = userId.toLowerCase();
+    const devToken = `dev:${id}:${role}`;
     set({ accessToken: devToken, isLoading: true });
     try {
-      // Try to fetch existing profile
+      // Step 1: Try to fetch existing profile (returning user)
       const res = await api.get('/auth/me');
       const user = res.data.data;
       await SecureStore.setItemAsync(TOKEN_KEY, devToken);
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {
-      // Profile doesn't exist yet — register in DynamoDB
+      // Step 2: Profile doesn't exist — auto-claim from master list
       try {
-        const regRes = await api.post('/auth/register', {
-          fullName: userId,
-          email: `${userId}@dev.local`,
-          role,
-        });
-        const user = regRes.data.data;
+        await api.post('/auth/claim', { collegeId: id });
+        // Claim succeeded — now fetch the created profile
+        const profileRes = await api.get('/auth/me');
+        const user = profileRes.data.data;
         await SecureStore.setItemAsync(TOKEN_KEY, devToken);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
         set({ user, isAuthenticated: true, isLoading: false });
-      } catch (regErr: any) {
-        // Backend is genuinely unreachable — surface the error
-        console.error('[Auth] Dev login failed:', regErr);
-        set({ isLoading: false });
-        throw new Error(
-          regErr?.message?.includes('Network')
-            ? 'Cannot reach the backend server. Make sure your backend (npm run dev) and DynamoDB Local are running.'
-            : regErr?.response?.data?.error || regErr?.message || 'Registration failed'
-        );
+      } catch (claimErr: any) {
+        // Step 3: Claim also failed — show helpful error
+        console.error('[Auth] Auto-claim failed:', claimErr);
+        set({ isLoading: false, accessToken: null });
+        const errMsg = claimErr?.response?.data?.message || claimErr?.response?.data?.error || claimErr?.message || '';
+        if (errMsg.includes('Network') || errMsg.includes('ECONNREFUSED')) {
+          throw new Error('Cannot reach the backend. Make sure backend (npm run dev) and DynamoDB Local are running.');
+        } else if (errMsg.includes('already been claimed')) {
+          // Claimed by a different uid — shouldn't happen in dev, but surface it
+          throw new Error('This College ID is already claimed by another account.');
+        } else if (errMsg.includes('not found') || errMsg.includes('Master record')) {
+          throw new Error(`College ID "${userId}" not found in the master list. Ask an admin to upload the CSV first.`);
+        }
+        throw new Error(errMsg || 'Login failed. Please check your College ID.');
       }
     }
   },

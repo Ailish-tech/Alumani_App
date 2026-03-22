@@ -88,25 +88,24 @@ export default function LoginScreen({ navigation }: Props) {
 
           {/* ── Glassmorphism Login Card ──────────────────────────── */}
           <View style={styles.glassCard}>
-            {/* Email Field */}
+            {/* College ID Field */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
+              <Text style={styles.fieldLabel}>COLLEGE ID / ROLL NUMBER</Text>
               <View style={styles.inputRow}>
                 <Ionicons
-                  name="at-outline"
+                  name="id-card-outline"
                   size={20}
                   color={mm.outline}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="name@university.edu"
+                  placeholder="e.g. CS001, ME001, FAC01"
                   placeholderTextColor={`${mm.outline}66`}
                   value={email}
                   onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
                 />
               </View>
             </View>
