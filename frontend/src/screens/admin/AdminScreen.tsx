@@ -1,0 +1,179 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  RefreshControl, Alert, ScrollView,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+import { User, Post } from '../../types';
+import api from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
+
+export default function AdminScreen() {
+  const [topMentors, setTopMentors] = useState<User[]>([]);
+  const [feed, setFeed] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'mentors' | 'feed'>('mentors');
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [mentorsRes, feedRes] = await Promise.all([
+        api.get('/admin/top-mentors'),
+        api.get('/admin/feed'),
+      ]);
+      setTopMentors(mentorsRes.data.data);
+      setFeed(feedRes.data.data);
+    } catch {}
+    setIsLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const deletePost = async (postId: string) => {
+    Alert.alert('Delete Post', 'Are you sure you want to remove this post?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/admin/post/${postId}`);
+            setFeed((f) => f.filter((p) => p.id !== postId));
+          } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.error || 'Failed');
+          }
+        },
+      },
+    ]);
+  };
+
+  const banUser = async (userId: string) => {
+    Alert.alert('Ban User', `Are you sure you want to ban user ${userId.substring(0, 12)}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Ban', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.put(`/admin/ban/${userId}`);
+            Alert.alert('Done', 'User has been banned');
+          } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.error || 'Failed');
+          }
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Tab Switcher */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'mentors' && styles.tabActive]}
+          onPress={() => setActiveTab('mentors')}
+        >
+          <Ionicons name="trophy" size={18} color={activeTab === 'mentors' ? Colors.primary : Colors.textMuted} />
+          <Text style={[styles.tabText, activeTab === 'mentors' && styles.tabTextActive]}>Top Mentors</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'feed' && styles.tabActive]}
+          onPress={() => setActiveTab('feed')}
+        >
+          <Ionicons name="newspaper" size={18} color={activeTab === 'feed' ? Colors.primary : Colors.textMuted} />
+          <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>Moderation</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'mentors' ? (
+        <FlatList
+          data={topMentors}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item, index }) => (
+            <View style={styles.mentorRow}>
+              <Text style={styles.rank}>#{index + 1}</Text>
+              <View style={styles.mentorAvatar}>
+                <Ionicons name="person" size={18} color={Colors.warning} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.mentorName}>{item.fullName || item.id}</Text>
+                <Text style={styles.mentorMeta}>{item.role} • {item.domain}</Text>
+              </View>
+              <View style={styles.mentorStats}>
+                <Text style={styles.guidedCount}>{item.studentsGuided}</Text>
+                <Text style={styles.guidedLabel}>guided</Text>
+              </View>
+              <TouchableOpacity onPress={() => banUser(item.id)} style={styles.banIcon}>
+                <Ionicons name="ban" size={18} color={Colors.error} />
+              </TouchableOpacity>
+            </View>
+          )}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} tintColor={Colors.primary} />}
+          contentContainerStyle={{ padding: Spacing.md }}
+        />
+      ) : (
+        <FlatList
+          data={feed}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.modCard}>
+              <View style={styles.modHeader}>
+                <Text style={styles.modAuthor}>{item.authorId.substring(0, 12)}</Text>
+                <Text style={styles.modTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+              </View>
+              <Text style={styles.modContent} numberOfLines={3}>{item.textContent}</Text>
+              <View style={styles.modActions}>
+                <Text style={styles.modStat}>❤️ {item.likesCount}  💬 {item.commentsCount}</Text>
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => deletePost(item.id)}>
+                  <Ionicons name="trash-outline" size={16} color={Colors.error} />
+                  <Text style={styles.deleteText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} tintColor={Colors.primary} />}
+          contentContainerStyle={{ padding: Spacing.md }}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bgDark },
+  tabs: { flexDirection: 'row', padding: Spacing.md, gap: Spacing.sm },
+  tab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
+    paddingVertical: Spacing.sm, borderRadius: BorderRadius.md,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
+  },
+  tabActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryGlow },
+  tabText: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600' },
+  tabTextActive: { color: Colors.primary },
+  mentorRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md,
+    padding: Spacing.md, marginBottom: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  rank: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.warning, width: 30 },
+  mentorAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primaryGlow, alignItems: 'center', justifyContent: 'center' },
+  mentorName: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary },
+  mentorMeta: { fontSize: FontSize.xs, color: Colors.textMuted },
+  mentorStats: { alignItems: 'center' },
+  guidedCount: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.accent },
+  guidedLabel: { fontSize: FontSize.xs, color: Colors.textMuted },
+  banIcon: { padding: Spacing.xs },
+  modCard: {
+    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
+    padding: Spacing.md, marginBottom: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  modHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  modAuthor: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary },
+  modTime: { fontSize: FontSize.xs, color: Colors.textMuted },
+  modContent: { fontSize: FontSize.md, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.sm },
+  modActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm },
+  modStat: { fontSize: FontSize.sm, color: Colors.textMuted },
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${Colors.error}15`, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.sm },
+  deleteText: { fontSize: FontSize.sm, color: Colors.error, fontWeight: '600' },
+});
