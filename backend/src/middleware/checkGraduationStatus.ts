@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/requests';
 import { checkAndTransitionRole } from '../services/masterService';
+import { cacheGet, cacheSet } from '../services/cacheService';
 
 /**
  * Lazy Auto-Transition Middleware: checkGraduationStatus
@@ -16,6 +17,9 @@ import { checkAndTransitionRole } from '../services/masterService';
  *
  * This is a "lazy" check — it only fires when the user actually makes
  * a request, avoiding the need for background cron jobs.
+ *
+ * OPTIMIZED: Results are cached in Redis for 24 hours to avoid
+ * hitting DynamoDB on every single API request.
  */
 export async function checkGraduationStatus(
   req: AuthenticatedRequest,
@@ -29,7 +33,23 @@ export async function checkGraduationStatus(
       return next();
     }
 
+    const cacheKey = `graduation:checked:${req.user.uid}`;
+    const alreadyChecked = await cacheGet<string>(cacheKey);
+
+    if (alreadyChecked) {
+      // Already checked recently — if it was transitioned, apply it
+      if (alreadyChecked === 'ALUMNI') {
+        res.setHeader('X-Role-Updated', 'ALUMNI');
+        res.setHeader('X-Role-Updated-Message', 'Congratulations! You have graduated and are now an Alumni.');
+        (req.user as any).role = 'ALUMNI';
+      }
+      return next();
+    }
+
     const newRole = await checkAndTransitionRole(req.user.uid);
+
+    // Cache the result for 24 hours (86400 seconds)
+    await cacheSet(cacheKey, newRole || 'STUDENT', 86400);
 
     if (newRole) {
       // Signal the client that the role has changed

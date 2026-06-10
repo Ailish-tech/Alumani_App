@@ -1,6 +1,8 @@
 import { PutCommand, GetCommand, DeleteCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoDb } from '../config/db';
 import { TABLE_NAME, buildKey, generateId, isoNow } from '../utils/helpers';
+import { typesenseClient } from '../config/typesense';
+import { syncJob, removeJob } from './typesenseSync';
 
 // ─── Job Service ────────────────────────────────────────────────────────────────
 // GSI1: COLLECTION#JOBS / DATE#<createdAt>  — list all jobs
@@ -23,19 +25,26 @@ export async function createJob(params: {
     applicantsCount: 0, isActive: true, createdAt: now,
   };
   await dynamoDb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+  await syncJob(item);
   return item;
 }
 
 export async function getAllJobs(typeFilter?: string) {
-  const result = await dynamoDb.send(new QueryCommand({
-    TableName: TABLE_NAME, IndexName: 'GSI1',
-    KeyConditionExpression: 'GSI1PK = :pk',
-    ExpressionAttributeValues: { ':pk': 'COLLECTION#JOBS' },
-    ScanIndexForward: false,
-  }));
-  let items = result.Items || [];
-  if (typeFilter) items = items.filter((i: any) => i.type === typeFilter);
-  return items;
+  try {
+    const searchResult = await typesenseClient
+      .collections('jobs')
+      .documents()
+      .search({
+        q: '*',
+        filter_by: typeFilter ? `type:=${typeFilter}` : '',
+        per_page: 250, // Reasonable max for now
+        sort_by: 'createdAt:desc',
+      });
+    return searchResult.hits?.map((hit) => hit.document) || [];
+  } catch (error) {
+    console.error('Typesense jobs search error:', error);
+    return [];
+  }
 }
 
 export async function getJobById(jobId: string) {
@@ -72,4 +81,5 @@ export async function deleteJob(jobId: string) {
   await dynamoDb.send(new DeleteCommand({
     TableName: TABLE_NAME, Key: { PK: buildKey('JOB', jobId), SK: 'META' },
   }));
+  await removeJob(jobId);
 }

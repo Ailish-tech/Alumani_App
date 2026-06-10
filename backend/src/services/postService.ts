@@ -3,6 +3,8 @@ import { dynamoDb } from '../config/db';
 import { PostEntity, PostLikeEntity, PostCommentEntity, PostBookmarkEntity } from '../types/entities';
 import { TABLE_NAME, buildKey, generateId, isoNow } from '../utils/helpers';
 import { NotFoundError, ConflictError } from '../utils/errors';
+import { batchGetItems } from '../utils/batchHelpers';
+import { cacheGet, cacheSet, cacheDelete, CacheKeys } from './cacheService';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // POST CRUD
@@ -41,6 +43,7 @@ export async function createPost(params: {
   };
 
   await dynamoDb.send(new PutCommand({ TableName: TABLE_NAME, Item: post }));
+  await cacheDelete(CacheKeys.globalFeed());
   return post;
 }
 
@@ -91,15 +94,16 @@ export async function toggleComments(postId: string, disabled: boolean): Promise
 /**
  * Like a post. Creates a LIKE item and increments likesCount.
  */
-export async function likePost(postId: string, userId: string): Promise<void> {
+export async function likePost(postId: string, userId: string, likerName?: string): Promise<void> {
   const now = isoNow();
 
-  const like: PostLikeEntity = {
+  const like: PostLikeEntity & { likerName?: string } = {
     PK: buildKey('POST', postId),
     SK: buildKey('LIKE', userId),
     entityType: 'POST_LIKE',
     postId,
     userId,
+    likerName: likerName || 'Anonymous',
     createdAt: now,
   };
 
@@ -177,6 +181,16 @@ export async function getLikesForPost(postId: string): Promise<PostLikeEntity[]>
     })
   );
   return (result.Items || []) as PostLikeEntity[];
+}
+
+/**
+ * Check if a user has liked multiple posts (batch).
+ */
+export async function batchCheckLikes(postIds: string[], userId: string): Promise<Set<string>> {
+  if (!postIds.length) return new Set();
+  const keys = postIds.map(id => ({ PK: buildKey('POST', id), SK: buildKey('LIKE', userId) }));
+  const results = await batchGetItems(keys);
+  return new Set(results.map(r => r.postId));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -344,6 +358,16 @@ export async function isPostBookmarked(userId: string, postId: string): Promise<
   return !!result.Item;
 }
 
+/**
+ * Check if a user has bookmarked multiple posts (batch).
+ */
+export async function batchCheckBookmarks(postIds: string[], userId: string): Promise<Set<string>> {
+  if (!postIds.length) return new Set();
+  const keys = postIds.map(id => ({ PK: buildKey('USER', userId), SK: buildKey('BOOKMARK', id) }));
+  const results = await batchGetItems(keys);
+  return new Set(results.map(r => r.postId));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEED QUERIES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -352,6 +376,10 @@ export async function isPostBookmarked(userId: string, postId: string): Promise<
  * Get the global feed (newest first).
  */
 export async function getGlobalFeed(limit = 20): Promise<PostEntity[]> {
+  const cacheKey = CacheKeys.globalFeed();
+  const cached = await cacheGet<PostEntity[]>(cacheKey);
+  if (cached) return cached;
+
   const result = await dynamoDb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -362,7 +390,10 @@ export async function getGlobalFeed(limit = 20): Promise<PostEntity[]> {
       Limit: limit,
     })
   );
-  return (result.Items || []) as PostEntity[];
+  
+  const feed = (result.Items || []) as PostEntity[];
+  await cacheSet(cacheKey, feed, 300); // cache for 5 minutes
+  return feed;
 }
 
 /**

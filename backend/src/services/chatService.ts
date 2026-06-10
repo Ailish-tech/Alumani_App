@@ -231,6 +231,7 @@ export async function getMessages(
 
 /**
  * Mark messages as read up to a given timestamp.
+ * Uses chunked parallel updates (max 25 concurrent) to avoid N+1 individual calls.
  */
 export async function markMessagesAsRead(
   roomId: string,
@@ -251,17 +252,23 @@ export async function markMessagesAsRead(
     })
   );
 
-  if (result.Items) {
-    const updatePromises = result.Items.map((item: any) =>
-      dynamoDb.send(
-        new UpdateCommand({
-          TableName: TABLE_NAME,
-          Key: { PK: item.PK, SK: item.SK },
-          UpdateExpression: 'SET isRead = :true',
-          ExpressionAttributeValues: { ':true': true },
-        })
+  if (!result.Items || result.Items.length === 0) return;
+
+  // Process in chunks of 25 to avoid overwhelming DynamoDB
+  const CHUNK_SIZE = 25;
+  for (let i = 0; i < result.Items.length; i += CHUNK_SIZE) {
+    const chunk = result.Items.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map((item: any) =>
+        dynamoDb.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: item.PK, SK: item.SK },
+            UpdateExpression: 'SET isRead = :true',
+            ExpressionAttributeValues: { ':true': true },
+          })
+        )
       )
     );
-    await Promise.all(updatePromises);
   }
 }

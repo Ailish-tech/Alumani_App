@@ -18,14 +18,17 @@ import {
   unbookmarkPost,
   getBookmarksForUser,
   isPostBookmarked,
+  batchCheckLikes,
+  batchCheckBookmarks,
 } from '../services/postService';
 import { getAcceptedConnectionIds } from '../services/connectionService';
 import { createNotification } from '../services/notificationService';
 import { getPresignedUploadUrl } from '../config/s3';
 import { ValidationError } from '../utils/errors';
-import { generateId } from '../utils/helpers';
+import { generateId, buildKey } from '../utils/helpers';
 import { PostEntity } from '../types/entities';
 import { getUserById } from '../services/userService';
+import { batchGetUsers, batchGetItems } from '../utils/batchHelpers';
 
 // Socket.io instance
 let ioInstance: any = null;
@@ -61,47 +64,28 @@ export async function getFeed(
       feed = await getGlobalFeed(20);
     }
 
-    // Enrich posts with per-user like/bookmark status and author names
-    const enrichedFeed = await Promise.all(
-      feed.map(async (post) => {
-        try {
-          // Get author name
-          let authorName = post.authorId.substring(0, 12);
-          try {
-            const author = await getUserById(post.authorId);
-            authorName = author.fullName || authorName;
-          } catch {}
+    const postIds = feed.map(p => p.id);
+    const authorIds = Array.from(new Set(feed.map(p => p.authorId)));
 
-          // Get like status for current user
-          const likes = await getLikesForPost(post.id);
-          const isLikedByMe = likes.some((l) => l.userId === currentUserId);
+    // 1 Batch get for all authors
+    const authorsMap = await batchGetUsers(authorIds);
+    // 1 Batch get for all likes
+    const likedPostIds = await batchCheckLikes(postIds, currentUserId);
+    // 1 Batch get for all bookmarks
+    const bookmarkedPostIds = await batchCheckBookmarks(postIds, currentUserId);
 
-          // Get liked-by names (up to 2)
-          const likedByNames: string[] = [];
-          for (const like of likes.slice(0, 2)) {
-            try {
-              const likeUser = await getUserById(like.userId);
-              likedByNames.push(likeUser.fullName || like.userId.substring(0, 10));
-            } catch {
-              likedByNames.push(like.userId.substring(0, 10));
-            }
-          }
-
-          // Check bookmark status
-          const bookmarked = await isPostBookmarked(currentUserId, post.id);
-
-          return {
-            ...post,
-            authorName,
-            isLikedByMe,
-            isBookmarked: bookmarked,
-            likedByNames,
-          };
-        } catch {
-          return { ...post, authorName: post.authorId.substring(0, 12) };
-        }
-      })
-    );
+    const enrichedFeed = feed.map(post => {
+      const author = authorsMap.get(post.authorId);
+      const authorName = author?.fullName || post.authorId.substring(0, 12);
+      
+      return {
+        ...post,
+        authorName,
+        isLikedByMe: likedPostIds.has(post.id),
+        isBookmarked: bookmarkedPostIds.has(post.id),
+        likedByNames: [], // Removed to avoid N+1 queries; load on demand instead
+      };
+    });
 
     res.json({ success: true, data: enrichedFeed });
   } catch (error) { next(error); }
@@ -174,7 +158,8 @@ export async function likePostHandler(
 ): Promise<void> {
   try {
     const { postId } = req.params;
-    await likePost(postId, req.user.uid);
+    const user = await getUserById(req.user.uid);
+    await likePost(postId, req.user.uid, user.fullName);
 
     // Notify post author
     const post = await getPostById(postId);
@@ -353,14 +338,16 @@ export async function getSavedPostsHandler(
 ): Promise<void> {
   try {
     const bookmarks = await getBookmarksForUser(req.user.uid);
-    // Fetch the actual posts
-    const posts = await Promise.all(
-      bookmarks.map(async (b) => {
-        try { return await getPostById(b.postId); }
-        catch { return null; }
-      })
-    );
-    res.json({ success: true, data: posts.filter(Boolean) });
+    if (!bookmarks.length) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+
+    // Fetch the actual posts in batch
+    const keys = bookmarks.map(b => ({ PK: buildKey('POST', b.postId), SK: 'DETAILS' }));
+    const posts = await batchGetItems(keys);
+
+    res.json({ success: true, data: posts });
   } catch (error) { next(error); }
 }
 

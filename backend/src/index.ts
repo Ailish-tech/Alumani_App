@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
@@ -58,6 +60,23 @@ const io = new SocketIOServer(server, {
   pingInterval: 25000,
 });
 
+// Set up Redis Adapter for Socket.io to support PM2 Clustering
+const redisHost = process.env.REDIS_HOST || '127.0.0.1';
+const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+const redisPassword = process.env.REDIS_PASSWORD || '';
+const pubClient = new Redis({ host: redisHost, port: redisPort, password: redisPassword || undefined });
+const subClient = pubClient.duplicate();
+
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log('✅ Socket.io Redis adapter connected');
+}).catch(err => {
+  // Catch already connected errors or actual connection errors
+  if (err.message && err.message.includes('is already connecting')) {
+    io.adapter(createAdapter(pubClient, subClient));
+  }
+});
+
 // Inject io into controllers that need real-time notifications
 setMentorshipIo(io);
 setPostIo(io);
@@ -74,11 +93,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(sanitizeMiddleware);
 
-// Rate limiting — relaxed in development
+// Rate limiting — configured for high scale (1000/min)
 const isDev = process.env.NODE_ENV === 'development';
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isDev ? 1000 : 100,
+  windowMs: 60 * 1000, // 1 minute
+  max: 100000, // 100000 requests per min for 1000 concurrent users
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' },
