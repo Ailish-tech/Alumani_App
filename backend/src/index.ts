@@ -6,8 +6,10 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
-// Load environment variables first
-dotenv.config();
+import path from 'path';
+
+// Load environment variables first (from project root .env)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import { initializeFirebase } from './config/firebase';
 import { initializeSocketHandlers } from './socket/socketHandler';

@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import admin from 'firebase-admin';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 let firebaseApp: admin.app.App | null = null;
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
-  Dimensions,
+  Animated,
+  StatusBar,
+  Image,
 } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 import { Role } from '../../types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,14 +22,30 @@ import type { AuthStackParamList } from '../../types/navigation.types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
-const { width } = Dimensions.get('window');
 
-const ROLES: { label: string; value: Role; icon: string; color: string }[] = [
-  { label: 'Student', value: Role.STUDENT, icon: 'school', color: Colors.roleStudent },
-  { label: 'Alumni', value: Role.ALUMNI, icon: 'ribbon', color: Colors.roleAlumni },
-  { label: 'Faculty', value: Role.FACULTY, icon: 'briefcase', color: Colors.roleFaculty },
+
+// ─── LinkedIn-Inspired Color Palette (Local) ────────────────────────────────
+const LI = {
+  blue: '#0A66C2',
+  blueDark: '#004182',
+  white: '#FFFFFF',
+  bgLight: '#F3F2EF',
+  border: '#DCE6F1',
+  textDark: '#191919',
+  textSecondary: '#666666',
+};
+
+// ─── College Logo ───────────────────────────────────────────────────────────
+const collegeLogo = require('../../../assets/college-logo.jpg');
+
+// ─── Role Chips ─────────────────────────────────────────────────────────────
+const ROLES: { label: string; value: Role; icon: keyof typeof Ionicons.glyphMap; desc: string }[] = [
+  { label: 'Student', value: Role.STUDENT, icon: 'school-outline', desc: 'Currently enrolled' },
+  { label: 'Alumni', value: Role.ALUMNI, icon: 'ribbon-outline', desc: 'Graduate' },
+  { label: 'Faculty', value: Role.FACULTY, icon: 'briefcase-outline', desc: 'Professor / Staff' },
 ];
 
+// ─── Main Signup Screen ─────────────────────────────────────────────────────
 export default function SignupScreen({ navigation }: Props) {
   const { signup, isLoading } = useAuthStore();
   const [fullName, setFullName] = useState('');
@@ -40,17 +57,93 @@ export default function SignupScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Focus states
+
+
+  // ── Animations ──────────────────────────────────────────────────────────
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(18)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const cardTranslateY = useRef(new Animated.Value(40)).current;
+  const footerOpacity = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.stagger(160, [
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerTranslateY, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(cardOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardTranslateY, {
+          toValue: 0,
+          friction: 7,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(footerOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const onPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.96,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+  const onPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      friction: 5,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Missing Fields', 'Name and email are required.');
+      AppleAlert.alert('Missing Fields', 'Name and email are required.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      AppleAlert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Mismatch', 'Passwords do not match.');
+      AppleAlert.alert('Mismatch', 'Passwords do not match.');
       return;
     }
     try {
@@ -70,173 +163,256 @@ export default function SignupScreen({ navigation }: Props) {
           : e?.code === 'auth/weak-password'
           ? 'Password is too weak. Use at least 6 characters.'
           : e?.response?.data?.error || e?.message || 'Registration failed.';
-      Alert.alert('Signup Failed', message);
+      AppleAlert.alert('Signup Failed', message);
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Decorative glow */}
-      <View style={styles.glowCircle} />
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={LI.white} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
-          {/* ── Back ── */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-
-          {/* ── Header ── */}
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join your college network</Text>
-
-          {/* ── Full Name ── */}
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Your full name"
-              placeholderTextColor={Colors.textMuted}
-            />
-          </View>
-
-          {/* ── Email ── */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="mail-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@college.edu"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-          </View>
-
-          {/* ── Password ── */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Min 6 characters"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Confirm Password ── */}
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Re-enter password"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry={!showConfirm}
-            />
-            <TouchableOpacity
-              onPress={() => setShowConfirm(!showConfirm)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Role Selection ── */}
-          <Text style={styles.label}>I am a…</Text>
-          <View style={styles.roleRow}>
-            {ROLES.map((r) => {
-              const isActive = role === r.value;
-              return (
-                <TouchableOpacity
-                  key={r.value}
-                  style={[
-                    styles.roleChip,
-                    isActive && { borderColor: r.color, backgroundColor: `${r.color}12` },
-                  ]}
-                  onPress={() => setRole(r.value)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={r.icon as any}
-                    size={22}
-                    color={isActive ? r.color : Colors.textMuted}
-                  />
-                  <Text style={[styles.roleChipText, isActive && { color: r.color }]}>
-                    {r.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* ── Domain ── */}
-          <Text style={styles.label}>Domain (optional)</Text>
-          <View style={styles.inputBox}>
-            <Ionicons name="briefcase-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={domain}
-              onChangeText={setDomain}
-              placeholder="e.g. Software Engineering"
-              placeholderTextColor={Colors.textMuted}
-            />
-          </View>
-
-          {/* ── Register Button ── */}
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={isLoading}
-            activeOpacity={0.85}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="person-add-outline" size={20} color="#fff" />
-                <Text style={styles.buttonText}>Create Account</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* ── Login Link ── */}
+          {/* ── Back Button ──────────────────────────────────────────── */}
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.linkRow}
+            style={styles.backBtn}
             activeOpacity={0.7}
           >
-            <Text style={styles.linkText}>
-              Already have an account?{' '}
-              <Text style={styles.linkHighlight}>Sign In</Text>
-            </Text>
+            <Ionicons name="arrow-back" size={22} color={LI.textDark} />
           </TouchableOpacity>
+
+          {/* ── Logo ─────────────────────────────────────────────────── */}
+          <Animated.View
+            style={[
+              styles.logoSection,
+              {
+                opacity: logoOpacity,
+                transform: [{ scale: logoScale }],
+              },
+            ]}
+          >
+            <Image
+              source={collegeLogo}
+              style={styles.collegeLogo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          {/* ── Header ───────────────────────────────────────────────── */}
+          <Animated.View
+            style={[
+              styles.headerSection,
+              {
+                opacity: headerOpacity,
+                transform: [{ translateY: headerTranslateY }],
+              },
+            ]}
+          >
+            <Text style={styles.title}>Join AlumniConnect</Text>
+            <Text style={styles.subtitle}>
+              Create your account and connect with your college network
+            </Text>
+          </Animated.View>
+
+          {/* ── Form Card ────────────────────────────────────────────── */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                opacity: cardOpacity,
+                transform: [{ translateY: cardTranslateY }],
+              },
+            ]}
+          >
+            {/* Full Name */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Your full name"
+                  placeholderTextColor="#B0B0B0"
+                />
+              </View>
+            </View>
+
+            {/* Email */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@college.edu"
+                  placeholderTextColor="#B0B0B0"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+            </View>
+
+            {/* Password */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Min 6 characters"
+                  placeholderTextColor="#B0B0B0"
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={styles.showBtn}
+                >
+                  <Text style={styles.showBtnText}>
+                    {showPassword ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm Password */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Re-enter password"
+                  placeholderTextColor="#B0B0B0"
+                  secureTextEntry={!showConfirm}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirm(!showConfirm)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={styles.showBtn}
+                >
+                  <Text style={styles.showBtnText}>
+                    {showConfirm ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Role Selection */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>I am a…</Text>
+              <View style={styles.roleRow}>
+                {ROLES.map((r) => {
+                  const isActive = role === r.value;
+                  return (
+                    <TouchableOpacity
+                      key={r.value}
+                      style={[
+                        styles.roleChip,
+                        isActive && styles.roleChipActive,
+                      ]}
+                      onPress={() => setRole(r.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={r.icon}
+                        size={22}
+                        color={isActive ? LI.blue : LI.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.roleChipLabel,
+                          isActive && styles.roleChipLabelActive,
+                        ]}
+                      >
+                        {r.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.roleChipDesc,
+                          isActive && { color: LI.blue },
+                        ]}
+                      >
+                        {r.desc}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Domain */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>
+                Domain{' '}
+                <Text style={styles.labelOptional}>(optional)</Text>
+              </Text>
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  value={domain}
+                  onChangeText={setDomain}
+                  placeholder="e.g. Software Engineering"
+                  placeholderTextColor="#B0B0B0"
+                />
+              </View>
+            </View>
+
+            {/* Agree & Register Button */}
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={[styles.registerBtn, isLoading && styles.registerBtnDisabled]}
+                onPress={handleRegister}
+                onPressIn={onPressIn}
+                onPressOut={onPressOut}
+                disabled={isLoading}
+                activeOpacity={0.9}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={LI.white} size="small" />
+                ) : (
+                  <Text style={styles.registerBtnText}>Agree & Join</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Terms text */}
+            <Text style={styles.termsText}>
+              By clicking Agree & Join, you agree to the AlumniConnect{' '}
+              <Text style={styles.termsLink}>User Agreement</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>.
+            </Text>
+          </Animated.View>
+
+          {/* ── Footer ───────────────────────────────────────────────── */}
+          <Animated.View style={[styles.footer, { opacity: footerOpacity }]}>
+            <Text style={styles.footerText}>Already on AlumniConnect? </Text>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.footerLink}>Sign in</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* ── College Footer ────────────────────────────────────────── */}
+          <Animated.View style={[styles.collegeFooter, { opacity: footerOpacity }]}>
+            <Text style={styles.collegeName}>
+              Anand International College of Engineering
+            </Text>
+            <Text style={styles.collegeTagline}>Empowering Futures</Text>
+          </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -244,127 +420,227 @@ export default function SignupScreen({ navigation }: Props) {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: Colors.bgDark,
+    backgroundColor: LI.white,
   },
-  content: {
-    padding: Spacing.lg,
-    paddingTop: 56,
-    paddingBottom: Spacing.xxl,
+  flex: {
+    flex: 1,
   },
-  glowCircle: {
-    position: 'absolute',
-    top: -140,
-    right: -60,
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: Colors.primaryGlow,
-    opacity: 0.4,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 40,
   },
+
+  // ── Back Button ───────────────────────────────────────────────────────────
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.bgCard,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: LI.bgLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: LI.border,
+  },
+
+  // ── Logo ──────────────────────────────────────────────────────────────────
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  collegeLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 14,
+  },
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
-    fontSize: FontSize.hero,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: -1,
+    fontSize: 26,
+    fontWeight: '700',
+    color: LI.textDark,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-    marginTop: Spacing.xs,
+    fontSize: 14,
+    color: LI.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 10,
+  },
+
+  // ── Card ──────────────────────────────────────────────────────────────────
+  card: {
+    backgroundColor: LI.white,
+    borderRadius: 10,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: LI.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  // ── Fields ────────────────────────────────────────────────────────────────
+  fieldGroup: {
+    marginBottom: 18,
   },
   label: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: Spacing.md,
-    marginBottom: Spacing.xs + 2,
+    color: LI.textDark,
+    marginBottom: 6,
+  },
+  labelOptional: {
+    fontWeight: '400',
+    color: LI.textSecondary,
+    fontSize: 13,
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgInput,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: '#BDBDBD',
+    borderRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    backgroundColor: LI.white,
   },
-  inputIcon: {
-    marginRight: Spacing.sm,
+  inputBoxFocused: {
+    borderColor: LI.blue,
   },
   input: {
     flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
+    fontSize: 16,
+    color: LI.textDark,
+    padding: 0,
   },
+  showBtn: {
+    paddingLeft: 10,
+  },
+  showBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: LI.blue,
+  },
+
+  // ── Role Selection ────────────────────────────────────────────────────────
   roleRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: 10,
   },
   roleChip: {
     flex: 1,
     alignItems: 'center',
     gap: 4,
-    paddingVertical: Spacing.sm + 2,
-    backgroundColor: Colors.bgCard,
-    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    backgroundColor: LI.bgLight,
+    borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: LI.border,
   },
-  roleChipText: {
-    fontSize: FontSize.xs,
+  roleChipActive: {
+    borderColor: LI.blue,
+    backgroundColor: 'rgba(10, 102, 194, 0.06)',
+  },
+  roleChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LI.textDark,
+  },
+  roleChipLabelActive: {
+    color: LI.blue,
+  },
+  roleChipDesc: {
+    fontSize: 10,
+    color: LI.textSecondary,
+    textAlign: 'center',
+  },
+
+  // ── Register Button ───────────────────────────────────────────────────────
+  registerBtn: {
+    backgroundColor: LI.blue,
+    borderRadius: 28,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    shadowColor: LI.blue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  registerBtnDisabled: {
+    opacity: 0.65,
+  },
+  registerBtnText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: LI.white,
+    letterSpacing: 0.3,
+  },
+
+  // ── Terms ─────────────────────────────────────────────────────────────────
+  termsText: {
+    fontSize: 12,
+    color: LI.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 16,
+  },
+  termsLink: {
+    color: LI.blue,
     fontWeight: '600',
-    color: Colors.textMuted,
   },
-  button: {
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary,
-    marginTop: Spacing.xl,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
+    marginTop: 28,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  footerText: {
+    fontSize: 15,
+    color: LI.textDark,
   },
-  buttonText: {
-    fontSize: FontSize.lg,
+  footerLink: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: LI.blue,
   },
-  linkRow: {
+
+  // ── College Footer ────────────────────────────────────────────────────────
+  collegeFooter: {
     alignItems: 'center',
-    marginTop: Spacing.lg,
+    marginTop: 32,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: LI.border,
   },
-  linkText: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
+  collegeName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: LI.textSecondary,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
-  linkHighlight: {
-    color: Colors.primary,
-    fontWeight: '700',
+  collegeTagline: {
+    fontSize: 11,
+    color: '#999999',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
 });

@@ -3,10 +3,20 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, Alert,
 } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { Post } from '../../types';
 import api from '../../services/api';
+
+const LI = {
+  blue: '#0A66C2',
+  white: '#FFFFFF',
+  bgLight: '#F3F2EF',
+  border: '#DCE6F1',
+  textDark: '#191919',
+  textSecondary: '#666666',
+  like: '#DC3545',
+};
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -28,7 +38,7 @@ export default function MyPostsScreen() {
       const res = await api.get('/posts/my');
       setPosts(res.data.data);
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Failed to load posts');
+      AppleAlert.alert('Error', e.response?.data?.error || 'Failed to load posts');
     }
     setIsLoading(false);
   }, []);
@@ -36,17 +46,15 @@ export default function MyPostsScreen() {
   useEffect(() => { fetchMyPosts(); }, []);
 
   const deletePost = (postId: string) => {
-    Alert.alert('Delete Post', 'Remove this post?', [
+    AppleAlert.alert('Delete Post', 'Remove this post?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
           try {
-            await api.delete(`/admin/post/${postId}`); // reuse admin delete
+            await api.delete(`/admin/post/${postId}`);
             setPosts((p) => p.filter((x) => x.id !== postId));
-          } catch {
-            Alert.alert('Error', 'Could not delete post.');
-          }
+          } catch { AppleAlert.alert('Error', 'Could not delete post.'); }
         },
       },
     ]);
@@ -54,26 +62,20 @@ export default function MyPostsScreen() {
 
   const renderPost = ({ item }: { item: Post }) => (
     <View style={styles.card}>
-      {/* Header */}
       <View style={styles.cardHeader}>
-        <View style={styles.dot} />
         <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
         <TouchableOpacity onPress={() => deletePost(item.id)} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={16} color={Colors.error} />
+          <Ionicons name="trash-outline" size={16} color={LI.like} />
         </TouchableOpacity>
       </View>
-
-      {/* Content */}
       <Text style={styles.content}>{item.textContent}</Text>
-
-      {/* Footer stats */}
       <View style={styles.stats}>
         <View style={styles.stat}>
-          <Ionicons name="heart" size={15} color={Colors.like} />
+          <Ionicons name="thumbs-up" size={14} color={LI.blue} />
           <Text style={styles.statText}>{item.likesCount}</Text>
         </View>
         <View style={styles.stat}>
-          <Ionicons name="chatbubble" size={14} color={Colors.accent} />
+          <Ionicons name="chatbubble-outline" size={13} color={LI.textSecondary} />
           <Text style={styles.statText}>{item.commentsCount}</Text>
         </View>
       </View>
@@ -82,9 +84,8 @@ export default function MyPostsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Summary bar */}
       <View style={styles.summaryBar}>
-        <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+        <Ionicons name="document-text-outline" size={18} color={LI.blue} />
         <Text style={styles.summaryText}>{posts.length} post{posts.length !== 1 ? 's' : ''}</Text>
       </View>
 
@@ -92,18 +93,14 @@ export default function MyPostsScreen() {
         data={posts}
         keyExtractor={(item) => item.id}
         renderItem={renderPost}
-        refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={fetchMyPosts} tintColor={Colors.primary} />
-        }
-        contentContainerStyle={{ padding: Spacing.md, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchMyPosts} tintColor={LI.blue} colors={[LI.blue]} />}
+        contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>
-              <Ionicons name="newspaper-outline" size={52} color={Colors.textMuted} />
+              <Ionicons name="newspaper-outline" size={52} color={LI.textSecondary} />
               <Text style={styles.emptyTitle}>No posts yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Head to the Feed tab and share something with your network!
-              </Text>
+              <Text style={styles.emptySubtitle}>Head to the Feed tab and share something!</Text>
             </View>
           ) : null
         }
@@ -113,52 +110,34 @@ export default function MyPostsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-
+  container: { flex: 1, backgroundColor: LI.bgLight },
   summaryBar: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: LI.white,
+    borderBottomWidth: 1, borderBottomColor: LI.border,
   },
-  summaryText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '600' },
-
+  summaryText: { fontSize: 14, color: LI.textSecondary, fontWeight: '600' },
   card: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: LI.white, padding: 16,
+    borderBottomWidth: 1, borderBottomColor: LI.border,
   },
   cardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    marginBottom: Spacing.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: Colors.primary,
-  },
-  time: { flex: 1, fontSize: FontSize.xs, color: Colors.textMuted },
-  deleteBtn: {
-    padding: 4,
-    backgroundColor: `${Colors.error}15`,
-    borderRadius: BorderRadius.sm,
-  },
-
+  time: { fontSize: 12, color: LI.textSecondary },
+  deleteBtn: { padding: 4 },
   content: {
-    fontSize: FontSize.md, color: Colors.textPrimary,
-    lineHeight: 22, marginBottom: Spacing.md,
+    fontSize: 15, color: LI.textDark, lineHeight: 22, marginBottom: 12,
   },
-
   stats: {
-    flexDirection: 'row', gap: Spacing.lg,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    paddingTop: Spacing.sm,
+    flexDirection: 'row', gap: 16,
+    borderTopWidth: 1, borderTopColor: LI.border, paddingTop: 10,
   },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-
-  emptyState: {
-    alignItems: 'center', paddingTop: 80,
-    paddingHorizontal: Spacing.xl, gap: Spacing.sm,
-  },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.textSecondary },
-  emptySubtitle: { fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
+  statText: { fontSize: 13, color: LI.textSecondary },
+  emptyState: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 24, gap: 8 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: LI.textDark },
+  emptySubtitle: { fontSize: 14, color: LI.textSecondary, textAlign: 'center' },
 });

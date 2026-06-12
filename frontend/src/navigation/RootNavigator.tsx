@@ -67,9 +67,15 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 const SCREEN_OPTIONS = {
-  headerStyle: { backgroundColor: Colors.bgDark },
-  headerTintColor: Colors.textPrimary,
-  headerTitleStyle: { fontWeight: '700' as const },
+  headerStyle: {
+    backgroundColor: '#FFFFFF',
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCE6F1',
+  },
+  headerTintColor: '#191919',
+  headerTitleStyle: { fontWeight: '700' as const, color: '#191919' },
   headerShadowVisible: false,
 };
 

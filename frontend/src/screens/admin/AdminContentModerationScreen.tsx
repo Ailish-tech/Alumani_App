@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, TextInput, ScrollView } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import api from '../../services/api';
@@ -34,7 +35,7 @@ export default function AdminContentModerationScreen() {
       posts: `/admin/post/${id}`, events: `/admin/event/${id}`, jobs: `/admin/job/${id}`,
       groups: `/admin/group/${id}`, stories: `/admin/story/${id}`,
     };
-    Alert.alert('Delete Content', `Permanently delete this ${tab.slice(0, -1)}?`, [
+    AppleAlert.alert('Delete Content', `Permanently delete this ${tab.slice(0, -1)}?`, [
       { text: 'Cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => { await api.delete(deleteEndpoints[tab]); fetch(); } },
     ]);
@@ -45,21 +46,21 @@ export default function AdminContentModerationScreen() {
       <View style={s.header}><Text style={s.title}>🛡️ Content Moderation</Text></View>
 
       {/* Content type tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabRow} contentContainerStyle={{ gap: Spacing.xs, paddingHorizontal: Spacing.md }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabRow} contentContainerStyle={{ gap: 4, paddingHorizontal: 16 }}>
         {CONTENT_TYPES.map(t => {
           const cfg = CONTENT_LABELS[t];
           return (
             <TouchableOpacity key={t} style={[s.tab, tab === t && { borderColor: cfg.color, backgroundColor: `${cfg.color}15` }]}
               onPress={() => setTab(t)}>
-              <Ionicons name={cfg.icon as any} size={14} color={tab === t ? cfg.color : Colors.textMuted} />
+              <Ionicons name={cfg.icon as any} size={14} color={tab === t ? cfg.color : '#999999'} />
               <Text style={[s.tabText, tab === t && { color: cfg.color }]}>{cfg.label}</Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      <FlatList data={items} keyExtractor={i => i.id} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={Colors.roleAdmin} />}
+      <FlatList data={items} keyExtractor={i => i.id} contentContainerStyle={{ padding: 16, gap: 8 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={'#004182'} />}
         renderItem={({ item }) => (
           <View style={s.card}>
             <View style={s.cardContent}>
@@ -74,24 +75,24 @@ export default function AdminContentModerationScreen() {
             </View>
           </View>
         )}
-        ListEmptyComponent={<View style={s.empty}><Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textMuted} /><Text style={s.emptyText}>No {CONTENT_LABELS[tab].label.toLowerCase()} found</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><Ionicons name="checkmark-done-circle-outline" size={48} color={'#999999'} /><Text style={s.emptyText}>No {CONTENT_LABELS[tab].label.toLowerCase()} found</Text></View>}
       />
     </View>
   );
 }
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  header: { paddingHorizontal: Spacing.md, paddingTop: 56, paddingBottom: Spacing.sm },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  tabRow: { maxHeight: 44, marginBottom: Spacing.sm },
-  tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Colors.border },
-  tabText: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600' },
-  card: { backgroundColor: Colors.bgCard, borderRadius: BorderRadius.sm, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  cardContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  cardTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary },
-  cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted },
-  cardDate: { fontSize: 10, color: Colors.textMuted },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
+  header: { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#191919' },
+  tabRow: { maxHeight: 44, marginBottom: 8 },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: '#DCE6F1' },
+  tabText: { fontSize: 13, color: '#999999', fontWeight: '600' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 4, padding: 16, borderWidth: 1, borderColor: '#DCE6F1' },
+  cardContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: '#191919' },
+  cardMeta: { fontSize: 11, color: '#999999' },
+  cardDate: { fontSize: 10, color: '#999999' },
   deleteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FF525215', alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  emptyText: { fontSize: 15, color: '#999999' },
 });

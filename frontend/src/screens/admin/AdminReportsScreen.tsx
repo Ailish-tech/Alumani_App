@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import api from '../../services/api';
@@ -15,7 +16,7 @@ export default function AdminReportsScreen() {
   useEffect(() => { fetch(); }, [filter]);
 
   const handleAction = (id: string, status: string) => {
-    Alert.alert('Confirm', `Mark report as "${status}"?`, [
+    AppleAlert.alert('Confirm', `Mark report as "${status}"?`, [
       { text: 'Cancel' },
       { text: 'Confirm', onPress: async () => { await api.patch(`/admin/reports/${id}`, { status }); fetch(); } },
     ]);
@@ -36,7 +37,7 @@ export default function AdminReportsScreen() {
       </View>
 
       <FlatList data={reports} keyExtractor={i => i.id} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={Colors.roleAdmin} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={'#004182'} />}
         renderItem={({ item }) => (
           <View style={s.card}>
             <View style={s.cardHeader}>
@@ -63,30 +64,30 @@ export default function AdminReportsScreen() {
             )}
           </View>
         )}
-        ListEmptyComponent={<View style={s.empty}><Ionicons name="checkmark-circle-outline" size={48} color={Colors.textMuted} /><Text style={s.emptyText}>No {filter} reports</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><Ionicons name="checkmark-circle-outline" size={48} color={'#999999'} /><Text style={s.emptyText}>No {filter} reports</Text></View>}
       />
     </View>
   );
 }
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
   header: { paddingHorizontal: Spacing.md, paddingTop: 56, paddingBottom: Spacing.sm },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
+  title: { fontSize: FontSize.xxl, fontWeight: '800', color: '#191919' },
   filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.md, gap: Spacing.xs, marginBottom: Spacing.sm },
-  filterChip: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Colors.border },
-  filterText: { fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'capitalize', fontWeight: '600' },
-  card: { backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, gap: Spacing.xs },
+  filterChip: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: '#DCE6F1' },
+  filterText: { fontSize: FontSize.xs, color: '#999999', textTransform: 'capitalize', fontWeight: '600' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: BorderRadius.md, padding: Spacing.md, borderWidth: 1, borderColor: '#DCE6F1', gap: Spacing.xs },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.full },
   typeText: { fontSize: FontSize.xs, color: '#FF5252', fontWeight: '700', textTransform: 'uppercase' },
   statusBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.full },
   statusText: { fontSize: FontSize.xs, fontWeight: '700', textTransform: 'capitalize' },
-  reason: { fontSize: FontSize.md, color: Colors.textPrimary, fontWeight: '600' },
-  meta: { fontSize: FontSize.xs, color: Colors.textMuted },
-  date: { fontSize: FontSize.xs, color: Colors.textMuted },
+  reason: { fontSize: FontSize.md, color: '#191919', fontWeight: '600' },
+  meta: { fontSize: FontSize.xs, color: '#999999' },
+  date: { fontSize: FontSize.xs, color: '#999999' },
   actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
   actionBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm, alignItems: 'center' },
   actionBtnText: { fontWeight: '700', fontSize: FontSize.sm },
   empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  emptyText: { fontSize: FontSize.md, color: '#999999' },
 });

@@ -92,13 +92,14 @@ export async function updateMe(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { fullName, profilePicUrl, skills, domain, bio, workplace } = req.body as {
+    const { fullName, profilePicUrl, skills, domain, bio, workplace, role } = req.body as {
       fullName?: string;
       profilePicUrl?: string;
       skills?: string[];
       domain?: string;
       bio?: string;
       workplace?: string;
+      role?: string;
     };
 
     if (fullName !== undefined && fullName.trim().length === 0) {
@@ -112,6 +113,7 @@ export async function updateMe(
       domain: domain?.trim(),
       bio: bio?.trim(),
       workplace: workplace?.trim(),
+      ...(role ? { role } : {}),
     });
 
     res.json({ success: true, data: updated });

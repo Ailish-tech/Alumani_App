@@ -1,13 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { ChatRoom } from '../../types';
 import api from '../../services/api';
+import PremiumHeader from '../../components/PremiumHeader';
+
+// ─── LinkedIn-Inspired Colors ───────────────────────────────────────────────
+const LI = {
+  blue: '#0A66C2',
+  white: '#FFFFFF',
+  bgLight: '#F3F2EF',
+  border: '#DCE6F1',
+  textDark: '#191919',
+  textSecondary: '#666666',
+  green: '#057642',
+};
 
 // Cache for user names
 const nameCache: Record<string, string> = {};
@@ -22,7 +33,6 @@ async function getUserName(userId: string): Promise<string> {
       return users[0].fullName;
     }
   } catch {}
-  // Fallback: try profile endpoint
   try {
     const res = await api.get(`/auth/profile/${userId}`);
     if (res.data?.data?.fullName) {
@@ -48,29 +58,40 @@ function timeAgo(date: string) {
   return `${Math.floor(days / 7)}w`;
 }
 
-function RoomCard({ room, currentUserId, onPress }: { room: ChatRoom; currentUserId: string; onPress: () => void }) {
+function RoomCard({ room, currentUserId, onPress, index }: { room: ChatRoom; currentUserId: string; onPress: () => void; index: number }) {
   const otherUserId = room.participantOneId === currentUserId ? room.participantTwoId : room.participantOneId;
   const [displayName, setDisplayName] = useState(otherUserId.substring(0, 16));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     getUserName(otherUserId).then(setDisplayName);
+    Animated.timing(fadeAnim, {
+      toValue: 1, duration: 350, delay: index * 60, useNativeDriver: true,
+    }).start();
   }, [otherUserId]);
 
+  const initials = displayName.charAt(0).toUpperCase();
+  const colors = ['#0A66C2', '#057642', '#5F4BB6', '#B24020', '#0073B1'];
+  const bgColor = colors[initials.charCodeAt(0) % colors.length];
+
   return (
-    <TouchableOpacity style={styles.roomCard} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={styles.nameRow}>
-          <Text style={styles.roomName} numberOfLines={1}>{displayName}</Text>
-          <Text style={styles.timeText}>{timeAgo(room.updatedAt)}</Text>
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <TouchableOpacity style={styles.roomCard} onPress={onPress} activeOpacity={0.7}>
+        <View style={[styles.avatar, { backgroundColor: bgColor }]}>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
-        <Text style={styles.lastMessage} numberOfLines={1}>
-          {room.lastMessagePreview || 'No messages yet'}
-        </Text>
-      </View>
-    </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <View style={styles.nameRow}>
+            <Text style={styles.roomName} numberOfLines={1}>{displayName}</Text>
+            <Text style={styles.timeText}>{timeAgo(room.updatedAt)}</Text>
+          </View>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            {room.lastMessagePreview || 'No messages yet'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={LI.textSecondary} />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -82,19 +103,21 @@ export default function ChatListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <PremiumHeader title="Messages" subtitle="Your conversations" showNotifications />
       {error && (
         <View style={styles.errorBanner}>
-          <Ionicons name="warning" size={16} color={Colors.warning} />
+          <Ionicons name="warning" size={16} color="#E16745" />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
       <FlatList
         data={rooms}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <RoomCard
             room={item}
             currentUserId={user?.id || ''}
+            index={index}
             onPress={() => {
               const otherUserId = item.participantOneId === user?.id ? item.participantTwoId : item.participantOneId;
               const cached = nameCache[otherUserId];
@@ -105,11 +128,11 @@ export default function ChatListScreen({ navigation }: any) {
             }}
           />
         )}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchRooms} tintColor={Colors.primary} />}
-        contentContainerStyle={{ padding: Spacing.md }}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchRooms} tintColor={LI.blue} colors={[LI.blue]} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubbles-outline" size={48} color={Colors.textMuted} />
+            <Ionicons name="chatbubbles-outline" size={48} color={LI.textSecondary} />
             <Text style={styles.emptyText}>No conversations yet</Text>
             <Text style={styles.emptySubtext}>Connect with someone to start chatting</Text>
           </View>
@@ -120,35 +143,32 @@ export default function ChatListScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: LI.white },
   roomCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: LI.border,
   },
   avatar: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: Colors.primaryGlow,
+    width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.primary,
   },
   avatarText: {
-    fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary,
+    fontSize: 20, fontWeight: '700', color: LI.white,
   },
   nameRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  roomName: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary, flex: 1, marginRight: Spacing.sm },
-  lastMessage: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  timeText: { fontSize: FontSize.xs, color: Colors.textMuted },
-  emptyState: { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.lg, color: Colors.textSecondary, fontWeight: '600' },
-  emptySubtext: { fontSize: FontSize.sm, color: Colors.textMuted },
+  roomName: { fontSize: 15, fontWeight: '600', color: LI.textDark, flex: 1, marginRight: 8 },
+  lastMessage: { fontSize: 13, color: LI.textSecondary, marginTop: 2 },
+  timeText: { fontSize: 12, color: LI.textSecondary },
+  emptyState: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  emptyText: { fontSize: 17, color: LI.textDark, fontWeight: '600' },
+  emptySubtext: { fontSize: 14, color: LI.textSecondary },
   errorBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: 'rgba(255, 214, 0, 0.1)', padding: Spacing.sm, paddingHorizontal: Spacing.md,
-    marginHorizontal: Spacing.md, marginTop: Spacing.sm, borderRadius: BorderRadius.sm,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF3C7', padding: 10, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: '#FDE68A',
   },
-  errorText: { fontSize: FontSize.sm, color: Colors.warning },
+  errorText: { fontSize: 13, color: '#92400E' },
 });

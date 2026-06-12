@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { GetCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { getFirebaseAdmin } from '../config/firebase';
 import { dynamoDb } from '../config/db';
 import { AuthenticatedRequest, AuthUser } from '../types/requests';
 import { Role } from '../types/enums';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors';
-import { TABLE_NAME, buildKey } from '../utils/helpers';
+import { TABLE_NAME, buildKey, isoNow } from '../utils/helpers';
 
 /**
  * Firebase JWT Authentication Middleware.
@@ -74,18 +74,44 @@ export async function authMiddleware(
         })
       );
 
-      if (!userResult.Item) {
-        throw new UnauthorizedError('User profile not found. Please register first.');
+      let userItem = userResult.Item;
+
+      // ── Auto-create profile if Firebase user exists but DynamoDB profile is missing ──
+      if (!userItem) {
+        console.log(`🆕 Auto-creating DynamoDB profile for Firebase user: ${decodedToken.uid} (${decodedToken.email})`);
+        const now = isoNow();
+        const newProfile = {
+          PK: buildKey('USER', decodedToken.uid),
+          SK: 'PROFILE',
+          userId: decodedToken.uid,
+          email: decodedToken.email || '',
+          fullName: decodedToken.name || decodedToken.email?.split('@')[0] || 'User',
+          role: Role.STUDENT,
+          avatarUrl: decodedToken.picture || '',
+          headline: '',
+          domain: '',
+          isBanned: false,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await dynamoDb.send(
+          new PutCommand({
+            TableName: TABLE_NAME,
+            Item: newProfile,
+          })
+        );
+        userItem = newProfile;
       }
 
-      if (userResult.Item.isBanned === true) {
+      if (userItem.isBanned === true) {
         throw new ForbiddenError('Your account has been banned. Contact support.');
       }
 
       authUser = {
         uid: decodedToken.uid,
-        role: userResult.Item.role as Role,
-        email: decodedToken.email || userResult.Item.email,
+        role: userItem.role as Role,
+        email: decodedToken.email || userItem.email,
       };
     }
 

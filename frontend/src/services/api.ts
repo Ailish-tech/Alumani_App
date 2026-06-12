@@ -2,7 +2,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'ax
 
 // ─── API Base URL ──────────────────────────────────────────────────────────────
 // Your PC's local network IP. Update this if your IP changes.
-const LAN_IP = '192.168.1.19';
+const LAN_IP = '192.168.1.34';
 const BASE_URL = `http://${LAN_IP}:3001/api`;
 console.log('[API] Base URL:', BASE_URL);
 

@@ -1,20 +1,37 @@
-import React, { useLayoutEffect, useState, useCallback } from 'react';
+import React, { useLayoutEffect, useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Animated, Platform, Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 import { Role, Post } from '../../types';
 import api from '../../services/api';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Soft muted role gradients (desaturated, professional)
+const ROLE_GRADIENTS: Record<Role, [string, string]> = {
+  [Role.STUDENT]: ['#E8EAF6', '#C5CAE9'],   // soft indigo
+  [Role.ALUMNI]: ['#E0F2F1', '#B2DFDB'],     // soft teal  
+  [Role.FACULTY]: ['#F3E5F5', '#E1BEE7'],    // soft purple
+  [Role.ADMIN]: ['#FBE9E7', '#FFCCBC'],      // soft warm
+};
+
 const ROLE_COLORS: Record<Role, string> = {
-  [Role.STUDENT]: Colors.roleStudent,
-  [Role.ALUMNI]: Colors.roleAlumni,
-  [Role.FACULTY]: Colors.roleFaculty,
-  [Role.ADMIN]: Colors.roleAdmin,
+  [Role.STUDENT]: '#3F51B5',
+  [Role.ALUMNI]: '#00897B',
+  [Role.FACULTY]: '#8E24AA',
+  [Role.ADMIN]: '#E64A19',
+};
+
+const ROLE_LABELS: Record<Role, string> = {
+  [Role.STUDENT]: 'Student',
+  [Role.ALUMNI]: 'Alumni',
+  [Role.FACULTY]: 'Faculty',
+  [Role.ADMIN]: 'Admin',
 };
 
 function timeAgo(date: string) {
@@ -27,6 +44,20 @@ function timeAgo(date: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// ─── Stat Card ──────────────────────────────────────────────────────────────
+function StatCard({ value, label, icon, gradient }: { value: number; label: string; icon: string; gradient: [string, string] }) {
+  return (
+    <View style={s.statCard}>
+      <LinearGradient colors={gradient} style={s.statGradientBar} />
+      <View style={s.statContent}>
+        <Ionicons name={icon as any} size={16} color={gradient[0]} style={{ marginBottom: 4 }} />
+        <Text style={s.statNum}>{value}</Text>
+        <Text style={s.statLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen({ navigation }: any) {
   const { user, logout, fetchProfile } = useAuthStore();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -34,39 +65,30 @@ export default function ProfileScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} style={{ marginRight: 8 }}>
-          <Ionicons name="create-outline" size={24} color={Colors.primary} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
+  // Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const statsAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(150, [
+      Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 10 }),
+      Animated.spring(statsAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 10 }),
+      Animated.spring(contentAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 10 }),
+    ]).start();
+  }, []);
 
   const loadPosts = useCallback(async () => {
-    try {
-      const res = await api.get('/posts/my');
-      setPosts(res.data.data || []);
-    } catch {}
+    try { const res = await api.get('/posts/my'); setPosts(res.data.data || []); } catch {}
     setLoadingPosts(false);
   }, []);
 
   const loadFollowCounts = useCallback(async () => {
     if (!user) return;
-    try {
-      const res = await api.get(`/follow/${user.id}/counts`);
-      setFollowCounts(res.data.data);
-    } catch {}
+    try { const res = await api.get(`/follow/${user.id}/counts`); setFollowCounts(res.data.data); } catch {}
   }, [user]);
 
-  // Refresh posts and follow counts every time the screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      loadPosts();
-      loadFollowCounts();
-    }, [loadPosts, loadFollowCounts])
-  );
+  useFocusEffect(useCallback(() => { loadPosts(); loadFollowCounts(); }, [loadPosts, loadFollowCounts]));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -75,305 +97,290 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   if (!user) return null;
-  const roleColor = ROLE_COLORS[user.role] || Colors.primary;
-
+  const accentColor = ROLE_COLORS[user.role] || '#3F51B5';
+  const bannerGradient = ROLE_GRADIENTS[user.role] || ['#E8EAF6', '#C5CAE9'];
   const totalLikes = posts.reduce((sum, p) => sum + (p.likesCount || 0), 0);
-  const totalComments = posts.reduce((sum, p) => sum + (p.commentsCount || 0), 0);
+  const initials = (user.fullName || '?').charAt(0).toUpperCase();
 
   return (
     <ScrollView
       style={s.container}
-      contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      contentContainerStyle={{ paddingBottom: 120 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#667EEA" colors={['#667EEA']} />}
+      showsVerticalScrollIndicator={false}
     >
-      {/* ── Header Card ── */}
-      <View style={s.headerCard}>
-        <TouchableOpacity
-          style={s.avatarWrapper}
-          onPress={() => navigation.navigate('EditProfile')}
-          activeOpacity={0.8}
-        >
-          <View style={[s.avatarLarge, { borderColor: roleColor }]}>
-            <Ionicons name="person" size={40} color={roleColor} />
+      {/* ── Hero Section — Soft Banner + Card ── */}
+      <Animated.View style={{ opacity: headerAnim, transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+        {/* Soft gradient banner */}
+        <LinearGradient colors={bannerGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.banner}>
+          <View style={s.bannerTopBar}>
+            <View style={{ width: 36 }} />
+            <TouchableOpacity style={s.settingsBtn} onPress={() => navigation.navigate('EditProfile')}>
+              <Ionicons name="settings-outline" size={20} color={accentColor} />
+            </TouchableOpacity>
           </View>
-          <View style={s.editBadge}>
-            <Ionicons name="pencil" size={12} color="#fff" />
+        </LinearGradient>
+
+        {/* Profile card overlapping banner */}
+        <View style={s.profileCard}>
+          {/* Avatar overlapping the banner */}
+          <TouchableOpacity style={s.avatarWrap} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
+            <View style={[s.avatarRing, { borderColor: accentColor }]}>
+              <Text style={[s.avatarLetter, { color: accentColor }]}>{initials}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <Text style={s.profileName}>{user.fullName || user.id}</Text>
+          {user.bio ? <Text style={s.profileBio} numberOfLines={2}>{user.bio}</Text> : <Text style={s.profileBio}>{user.email}</Text>}
+
+          {/* Role badge */}
+          <View style={[s.rolePill, { backgroundColor: `${accentColor}10` }]}>
+            <View style={[s.roleDot, { backgroundColor: accentColor }]} />
+            <Text style={[s.roleText, { color: accentColor }]}>{ROLE_LABELS[user.role] || user.role}</Text>
           </View>
-        </TouchableOpacity>
-        <Text style={s.name}>{user.fullName || user.id}</Text>
-        <Text style={s.email}>{user.email}</Text>
-        <View style={[s.roleBadge, { backgroundColor: `${roleColor}20` }]}>
-          <Ionicons name="ribbon" size={13} color={roleColor} />
-          <Text style={[s.roleText, { color: roleColor }]}>
-            {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
-          </Text>
-        </View>
 
-        {/* ── Followers / Following ── */}
-        <View style={s.followRow}>
-          <TouchableOpacity
-            style={s.followStat}
-            onPress={() => navigation.navigate('FollowList', { userId: user.id, type: 'followers' })}
-          >
-            <Text style={s.followNum}>{followCounts.followers}</Text>
-            <Text style={s.followLabel}>Followers</Text>
-          </TouchableOpacity>
-          <View style={s.followDivider} />
-          <TouchableOpacity
-            style={s.followStat}
-            onPress={() => navigation.navigate('FollowList', { userId: user.id, type: 'following' })}
-          >
-            <Text style={s.followNum}>{followCounts.following}</Text>
-            <Text style={s.followLabel}>Following</Text>
+          {/* Follow counts */}
+          <View style={s.followRow}>
+            <TouchableOpacity style={s.followItem} onPress={() => navigation.navigate('FollowList', { userId: user.id, type: 'followers' })}>
+              <Text style={s.followNum}>{followCounts.followers}</Text>
+              <Text style={s.followLabel}>followers</Text>
+            </TouchableOpacity>
+            <View style={s.followDivider} />
+            <TouchableOpacity style={s.followItem} onPress={() => navigation.navigate('FollowList', { userId: user.id, type: 'following' })}>
+              <Text style={s.followNum}>{followCounts.following}</Text>
+              <Text style={s.followLabel}>following</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Edit Profile */}
+          <TouchableOpacity style={[s.editBtn, { backgroundColor: `${accentColor}0C`, borderColor: `${accentColor}30` }]} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
+            <Ionicons name="pencil-outline" size={15} color={accentColor} />
+            <Text style={[s.editBtnText, { color: accentColor }]}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* ── Stats Grid (4 cards) ── */}
-      <View style={s.statsGrid}>
-        <View style={s.statCard}>
-          <Text style={s.statNum}>{user.reputationScore}</Text>
-          <Text style={s.statLabel}>⭐ Reputation</Text>
-        </View>
-        <View style={s.statCard}>
-          <Text style={s.statNum}>{user.studentsGuided}</Text>
-          <Text style={s.statLabel}>🎓 Guided</Text>
-        </View>
-        <View style={s.statCard}>
-          <Text style={s.statNum}>{posts.length}</Text>
-          <Text style={s.statLabel}>📝 Posts</Text>
-        </View>
-        <View style={s.statCard}>
-          <Text style={s.statNum}>{totalLikes}</Text>
-          <Text style={s.statLabel}>❤️ Likes</Text>
-        </View>
-      </View>
+      {/* ── Stats Grid ── */}
+      <Animated.View style={[s.statsGrid, { opacity: statsAnim, transform: [{ translateY: statsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+        <StatCard value={user.reputationScore} label="Reputation" icon="star-outline" gradient={['#FF9500', '#FFCC00']} />
+        <StatCard value={posts.length} label="Posts" icon="newspaper-outline" gradient={['#007AFF', '#5AC8FA']} />
+        <StatCard value={totalLikes} label="Likes" icon="heart-outline" gradient={['#FF3B30', '#FF6B6B']} />
+        <StatCard value={user.studentsGuided} label="Guided" icon="people-outline" gradient={['#34C759', '#30D158']} />
+      </Animated.View>
 
-      {/* ── About & Info Section ── */}
-      {(user.bio || user.workplace || user.domain) && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>📋 About</Text>
-          <View style={s.aboutCard}>
-            {user.bio ? (
-              <Text style={s.bioText}>{user.bio}</Text>
-            ) : null}
-            {user.bio && (user.domain || user.workplace) ? <View style={s.divider} /> : null}
+      {/* ── Content Sections ── */}
+      <Animated.View style={{ opacity: contentAnim, transform: [{ translateY: contentAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+
+        {/* About */}
+        {(user.bio || user.workplace || user.domain) && (
+          <View style={s.sectionCard}>
+            <Text style={s.sectionTitle}>About</Text>
+            {user.bio ? <Text style={s.bioText}>{user.bio}</Text> : null}
             {user.domain ? (
               <View style={s.infoRow}>
-                <Ionicons name="briefcase-outline" size={16} color={Colors.accent} />
-                <Text style={s.infoLabel}>Domain</Text>
-                <Text style={s.infoValue}>{user.domain}</Text>
+                <View style={[s.infoIcon, { backgroundColor: '#667EEA14' }]}>
+                  <Ionicons name="briefcase-outline" size={14} color="#667EEA" />
+                </View>
+                <Text style={s.infoText}>{user.domain}</Text>
               </View>
             ) : null}
             {user.workplace ? (
               <View style={s.infoRow}>
-                <Ionicons name="business-outline" size={16} color={Colors.accent} />
-                <Text style={s.infoLabel}>Works At</Text>
-                <Text style={s.infoValue}>{user.workplace}</Text>
+                <View style={[s.infoIcon, { backgroundColor: '#34C75914' }]}>
+                  <Ionicons name="business-outline" size={14} color="#34C759" />
+                </View>
+                <Text style={s.infoText}>{user.workplace}</Text>
               </View>
             ) : null}
           </View>
-        </View>
-      )}
+        )}
 
-      {/* ── Skills ── */}
-      {user.skills.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>🛠️ Skills</Text>
-          <View style={s.skillsRow}>
-            {user.skills.map((skill, i) => (
-              <View key={i} style={s.skillChip}>
-                <Text style={s.skillText}>{skill}</Text>
-              </View>
-            ))}
+        {/* Skills */}
+        {(user.skills?.length ?? 0) > 0 && (
+          <View style={s.sectionCard}>
+            <Text style={s.sectionTitle}>Skills</Text>
+            <View style={s.skillsRow}>
+              {user.skills.map((skill, i) => (
+                <View key={i} style={[s.skillChip, { backgroundColor: `${accentColor}0A` }]}>
+                  <Text style={[s.skillText, { color: accentColor }]}>{skill}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      {/* ── Recent Posts ── */}
-      <View style={s.section}>
-        <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>📰 My Posts</Text>
-          {posts.length > 3 && (
-            <TouchableOpacity onPress={() => navigation.navigate('MyPosts')}>
-              <Text style={s.seeAll}>See All ({posts.length})</Text>
-            </TouchableOpacity>
+        {/* Recent Posts */}
+        <View style={s.sectionCard}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Activity</Text>
+            {posts.length > 3 && (
+              <TouchableOpacity onPress={() => navigation.navigate('MyPosts')}>
+                <Text style={s.seeAll}>See all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {loadingPosts ? (
+            <ActivityIndicator color="#667EEA" style={{ marginTop: 24 }} />
+          ) : posts.length === 0 ? (
+            <View style={s.emptyPosts}>
+              <Ionicons name="newspaper-outline" size={36} color="#C7C7CC" />
+              <Text style={s.emptyText}>No posts yet</Text>
+            </View>
+          ) : (
+            posts.slice(0, 5).map((post) => (
+              <View key={post.id} style={s.postCard}>
+                <Text style={s.postContent} numberOfLines={3}>{post.textContent}</Text>
+                <View style={s.postFooter}>
+                  <View style={s.postStat}>
+                    <Ionicons name="heart" size={14} color="#FF3B30" />
+                    <Text style={s.postStatText}>{post.likesCount}</Text>
+                  </View>
+                  <View style={s.postStat}>
+                    <Ionicons name="chatbubble-outline" size={13} color="#8E8E93" />
+                    <Text style={s.postStatText}>{post.commentsCount}</Text>
+                  </View>
+                  <Text style={s.postTime}>{timeAgo(post.createdAt)}</Text>
+                </View>
+              </View>
+            ))
           )}
         </View>
 
-        {loadingPosts ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
-        ) : posts.length === 0 ? (
-          <View style={s.emptyPosts}>
-            <Ionicons name="newspaper-outline" size={36} color={Colors.textMuted} />
-            <Text style={s.emptyText}>No posts yet</Text>
-          </View>
-        ) : (
-          posts.slice(0, 5).map((post) => (
-            <View key={post.id} style={s.postCard}>
-              <Text style={s.postContent} numberOfLines={3}>{post.textContent}</Text>
-              <View style={s.postFooter}>
-                <View style={s.postStat}>
-                  <Ionicons name="heart" size={14} color={Colors.like} />
-                  <Text style={s.postStatText}>{post.likesCount}</Text>
-                </View>
-                <View style={s.postStat}>
-                  <Ionicons name="chatbubble" size={13} color={Colors.accent} />
-                  <Text style={s.postStatText}>{post.commentsCount}</Text>
-                </View>
-                <Text style={s.postTime}>{timeAgo(post.createdAt)}</Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* ── Activity Summary ── */}
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>📊 Activity Summary</Text>
-        <View style={s.activityCard}>
-          <View style={s.activityRow}>
-            <Text style={s.activityLabel}>Total Posts</Text>
-            <Text style={s.activityValue}>{posts.length}</Text>
-          </View>
-          <View style={s.activityRow}>
-            <Text style={s.activityLabel}>Total Likes Received</Text>
-            <Text style={[s.activityValue, { color: Colors.like }]}>{totalLikes}</Text>
-          </View>
-          <View style={s.activityRow}>
-            <Text style={s.activityLabel}>Total Comments Received</Text>
-            <Text style={[s.activityValue, { color: Colors.accent }]}>{totalComments}</Text>
-          </View>
-          <View style={[s.activityRow, { borderBottomWidth: 0 }]}>
-            <Text style={s.activityLabel}>Avg Likes per Post</Text>
-            <Text style={s.activityValue}>{posts.length ? (totalLikes / posts.length).toFixed(1) : '0'}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ── Logout ── */}
-      <TouchableOpacity style={s.logoutBtn} onPress={logout} activeOpacity={0.8}>
-        <Ionicons name="log-out-outline" size={20} color={Colors.error} />
-        <Text style={s.logoutText}>Sign Out</Text>
-      </TouchableOpacity>
+        {/* Sign Out */}
+        <TouchableOpacity style={s.logoutBtn} onPress={logout} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={18} color="#FF3B30" />
+          <Text style={s.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
 
-  // Header
-  headerCard: {
-    alignItems: 'center', padding: Spacing.lg,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.md,
+  // ── Banner + Card ──
+  banner: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 36,
+    paddingBottom: 50,
+    paddingHorizontal: 20,
   },
-  avatarWrapper: { position: 'relative', marginBottom: Spacing.md },
-  avatarLarge: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.primaryGlow,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 3,
+  bannerTopBar: {
+    flexDirection: 'row', justifyContent: 'space-between',
   },
-  editBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: Colors.primary,
+  settingsBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.65)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.bgCard,
   },
-  name: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
-  email: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 4 },
-  roleBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: Spacing.md, paddingVertical: 4,
-    borderRadius: BorderRadius.full, marginTop: Spacing.sm,
+  profileCard: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: -40,
+    borderRadius: 20,
+    alignItems: 'center',
+    paddingTop: 52,
+    paddingBottom: 22,
+    paddingHorizontal: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 5,
   },
-  roleText: { fontSize: FontSize.sm, fontWeight: '700' },
+  avatarWrap: {
+    position: 'absolute', top: -44,
+  },
+  avatarRing: {
+    width: 86, height: 86, borderRadius: 43,
+    backgroundColor: '#FFF',
+    borderWidth: 3,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+  },
+  avatarLetter: { fontSize: 34, fontWeight: '700' },
+  profileName: {
+    fontSize: 22, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : undefined,
+  },
+  profileBio: {
+    fontSize: 14, color: '#8E8E93', marginTop: 4,
+    textAlign: 'center', fontWeight: '400', paddingHorizontal: 10, lineHeight: 19,
+  },
+  rolePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, marginTop: 10,
+  },
+  roleDot: { width: 6, height: 6, borderRadius: 3 },
+  roleText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // Follow
   followRow: {
-    flexDirection: 'row', alignItems: 'center', marginTop: Spacing.md,
-    paddingVertical: Spacing.sm,
+    flexDirection: 'row', alignItems: 'center', marginTop: 18, gap: 0,
   },
-  followStat: { alignItems: 'center', paddingHorizontal: Spacing.lg },
-  followNum: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
-  followLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  followDivider: { width: 1, height: 32, backgroundColor: Colors.border },
+  followItem: { alignItems: 'center', paddingHorizontal: 24 },
+  followNum: { fontSize: 18, fontWeight: '800', color: '#1C1C1E' },
+  followLabel: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
+  followDivider: { width: 1, height: 24, backgroundColor: '#E5E5EA' },
 
-  // Stats Grid
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
-  statCard: {
-    width: '48%' as any, alignItems: 'center', paddingVertical: Spacing.md,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.border,
+  // Edit button
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 18, paddingVertical: 10, paddingHorizontal: 28,
+    borderRadius: 20, borderWidth: 1,
   },
-  statNum: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.primary },
-  statLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
+  editBtnText: { fontSize: 14, fontWeight: '600' },
+
+  // Stats
+  statsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    paddingHorizontal: 16, marginTop: 20,
+  },
+  statCard: {
+    width: (SCREEN_WIDTH - 52) / 2, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  statGradientBar: { height: 3 },
+  statContent: { padding: 14 },
+  statNum: { fontSize: 24, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
+  statLabel: { fontSize: 12, color: '#8E8E93', marginTop: 2, fontWeight: '500' },
 
   // Sections
-  section: { marginBottom: Spacing.md },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary, marginBottom: Spacing.sm },
-  seeAll: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
-
-  // About Card
-  aboutCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+  sectionCard: {
+    backgroundColor: '#FFF', borderRadius: 16, padding: 18, marginHorizontal: 16, marginTop: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  bioText: { fontSize: FontSize.md, color: Colors.textSecondary, lineHeight: 22 },
-  divider: { height: 1, backgroundColor: Colors.border, marginVertical: Spacing.sm },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 6 },
-  infoLabel: { fontSize: FontSize.xs, color: Colors.textMuted, width: 65 },
-  infoValue: { fontSize: FontSize.sm, color: Colors.textPrimary, fontWeight: '600', flex: 1 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3, marginBottom: 10 },
+  seeAll: { fontSize: 14, color: '#667EEA', fontWeight: '600' },
+
+  // About
+  bioText: { fontSize: 14, color: '#3C3C43', lineHeight: 21, marginBottom: 10 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  infoIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  infoText: { fontSize: 15, color: '#1C1C1E', fontWeight: '500' },
 
   // Skills
-  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
-  skillChip: {
-    backgroundColor: Colors.bgCard, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Colors.border,
-  },
-  skillText: { fontSize: FontSize.sm, color: Colors.accent },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  skillChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
+  skillText: { fontSize: 13, fontWeight: '600' },
 
   // Posts
   postCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
   },
-  postContent: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 22, marginBottom: Spacing.sm },
-  postFooter: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.lg,
-    borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm,
-  },
+  postContent: { fontSize: 14, color: '#1C1C1E', lineHeight: 21, marginBottom: 8 },
+  postFooter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   postStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  postStatText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  postTime: { flex: 1, textAlign: 'right', fontSize: FontSize.xs, color: Colors.textMuted },
-  emptyPosts: {
-    alignItems: 'center', padding: Spacing.xl,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.border, gap: Spacing.xs,
-  },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textMuted },
-
-  // Activity Summary
-  activityCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
-  },
-  activityRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  activityLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  activityValue: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
+  postStatText: { fontSize: 13, color: '#8E8E93' },
+  postTime: { flex: 1, textAlign: 'right', fontSize: 12, color: '#C7C7CC' },
+  emptyPosts: { alignItems: 'center', padding: 28, gap: 10 },
+  emptyText: { fontSize: 15, color: '#8E8E93' },
 
   // Logout
   logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    padding: Spacing.md, backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.error, marginTop: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    padding: 14, backgroundColor: '#FFF', marginHorizontal: 16, marginTop: 12,
+    borderRadius: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  logoutText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.error },
+  logoutText: { fontSize: 15, fontWeight: '600', color: '#FF3B30' },
 });

@@ -1,10 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import dotenv from 'dotenv';
+import path from 'path';
 import { memoryClient } from './memoryStore';
 import { seedAllData } from './seedData';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // ─── Attempt real DynamoDB connection ──────────────────────────────────────
 

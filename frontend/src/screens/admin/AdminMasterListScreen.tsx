@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
   ActivityIndicator, ScrollView,
 } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
@@ -26,13 +27,13 @@ export default function AdminMasterListScreen() {
         setResult(null);
       }
     } catch {
-      Alert.alert('Error', 'Failed to pick file');
+      AppleAlert.alert('Error', 'Failed to pick file');
     }
   };
 
   const uploadFile = async () => {
     if (!selectedFile) {
-      Alert.alert('No File', 'Please select a CSV file first.');
+      AppleAlert.alert('No File', 'Please select a CSV file first.');
       return;
     }
 
@@ -52,10 +53,10 @@ export default function AdminMasterListScreen() {
       });
 
       setResult(response.data.data);
-      Alert.alert('✅ Success', response.data.message);
+      AppleAlert.alert('✅ Success', response.data.message);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Upload failed';
-      Alert.alert('❌ Error', msg);
+      AppleAlert.alert('❌ Error', msg);
       setResult({ error: msg });
     }
 
@@ -63,11 +64,11 @@ export default function AdminMasterListScreen() {
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}>
+    <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       {/* Header */}
       <View style={s.hero}>
         <View style={s.heroIcon}>
-          <Ionicons name="cloud-upload" size={32} color={Colors.primary} />
+          <Ionicons name="cloud-upload" size={32} color={'#0A66C2'} />
         </View>
         <Text style={s.heroTitle}>Upload Master List</Text>
         <Text style={s.heroSub}>
@@ -92,7 +93,7 @@ export default function AdminMasterListScreen() {
 
       {/* File Picker */}
       <TouchableOpacity style={s.pickBtn} onPress={pickFile} activeOpacity={0.8}>
-        <Ionicons name="document-attach" size={24} color={Colors.primary} />
+        <Ionicons name="document-attach" size={24} color={'#0A66C2'} />
         <Text style={s.pickBtnText}>
           {selectedFile ? '📄 Change File' : '📂 Select CSV File'}
         </Text>
@@ -101,7 +102,7 @@ export default function AdminMasterListScreen() {
       {/* Selected File Info */}
       {selectedFile && (
         <View style={s.fileCard}>
-          <Ionicons name="document-text" size={28} color={Colors.accent} />
+          <Ionicons name="document-text" size={28} color={'#0A66C2'} />
           <View style={{ flex: 1 }}>
             <Text style={s.fileName}>{selectedFile.name}</Text>
             <Text style={s.fileSize}>
@@ -109,7 +110,7 @@ export default function AdminMasterListScreen() {
             </Text>
           </View>
           <TouchableOpacity onPress={() => { setSelectedFile(null); setResult(null); }}>
-            <Ionicons name="close-circle" size={24} color={Colors.error} />
+            <Ionicons name="close-circle" size={24} color={'#CC1016'} />
           </TouchableOpacity>
         </View>
       )}
@@ -148,7 +149,7 @@ export default function AdminMasterListScreen() {
               <Text style={s.resultLabel}>Inserted</Text>
             </View>
             <View style={s.resultItem}>
-              <Text style={[s.resultNum, { color: Colors.warning }]}>{result.skipped}</Text>
+              <Text style={[s.resultNum, { color: '#E16745' }]}>{result.skipped}</Text>
               <Text style={s.resultLabel}>Skipped</Text>
             </View>
           </View>
@@ -164,8 +165,8 @@ export default function AdminMasterListScreen() {
       )}
 
       {result?.error && (
-        <View style={[s.resultCard, { borderColor: Colors.error }]}>
-          <Text style={[s.resultTitle, { color: Colors.error }]}>❌ Upload Failed</Text>
+        <View style={[s.resultCard, { borderColor: '#CC1016' }]}>
+          <Text style={[s.resultTitle, { color: '#CC1016' }]}>❌ Upload Failed</Text>
           <Text style={s.errorItem}>{result.error}</Text>
         </View>
       )}
@@ -174,69 +175,69 @@ export default function AdminMasterListScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
 
-  hero: { alignItems: 'center', paddingVertical: Spacing.lg, gap: Spacing.sm },
+  hero: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   heroIcon: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: `${Colors.primary}20`,
+    backgroundColor: `${'#0A66C2'}20`,
     alignItems: 'center', justifyContent: 'center',
   },
-  heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
+  heroTitle: { fontSize: 20, fontWeight: '800', color: '#191919' },
   heroSub: {
-    fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center',
-    lineHeight: 20, paddingHorizontal: Spacing.lg,
+    fontSize: 13, color: '#999999', textAlign: 'center',
+    lineHeight: 20, paddingHorizontal: 24,
   },
 
   formatCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
-    marginBottom: Spacing.md,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 16, borderWidth: 1, borderColor: '#DCE6F1',
+    marginBottom: 16,
   },
-  formatTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.sm },
+  formatTitle: { fontSize: 15, fontWeight: '700', color: '#191919', marginBottom: 8 },
   codeBlock: {
-    backgroundColor: Colors.bgDark, borderRadius: BorderRadius.md,
-    padding: Spacing.sm, marginBottom: Spacing.sm,
+    backgroundColor: '#F3F2EF', borderRadius: 8,
+    padding: 8, marginBottom: 8,
   },
-  codeLine: { fontSize: 12, color: Colors.accent, fontFamily: 'monospace', fontWeight: '700' },
-  codeLineData: { fontSize: 12, color: Colors.textSecondary, fontFamily: 'monospace' },
-  formatHint: { fontSize: FontSize.xs, color: Colors.textMuted, fontStyle: 'italic' },
+  codeLine: { fontSize: 12, color: '#0A66C2', fontFamily: 'monospace', fontWeight: '700' },
+  codeLineData: { fontSize: 12, color: '#666666', fontFamily: 'monospace' },
+  formatHint: { fontSize: 11, color: '#999999', fontStyle: 'italic' },
 
   pickBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.md,
-    borderWidth: 2, borderColor: Colors.primary, borderStyle: 'dashed',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 16, marginBottom: 16,
+    borderWidth: 2, borderColor: '#0A66C2', borderStyle: 'dashed',
   },
-  pickBtnText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
+  pickBtnText: { fontSize: 15, fontWeight: '700', color: '#0A66C2' },
 
   fileCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.md,
-    borderWidth: 1, borderColor: Colors.accent,
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: '#0A66C2',
   },
-  fileName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  fileSize: { fontSize: FontSize.xs, color: Colors.textMuted },
+  fileName: { fontSize: 15, fontWeight: '700', color: '#191919' },
+  fileSize: { fontSize: 11, color: '#999999' },
 
   uploadBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.lg,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#0A66C2', borderRadius: 12,
+    padding: 16, marginBottom: 24,
   },
   uploadBtnDisabled: { opacity: 0.4 },
-  uploadBtnText: { fontSize: FontSize.md, fontWeight: '700', color: '#fff' },
+  uploadBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   resultCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.accent,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 16, borderWidth: 1, borderColor: '#0A66C2',
   },
-  resultTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.sm },
-  resultGrid: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.sm },
+  resultTitle: { fontSize: 15, fontWeight: '700', color: '#191919', marginBottom: 8 },
+  resultGrid: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
   resultItem: { alignItems: 'center' },
-  resultNum: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.primary },
-  resultLabel: { fontSize: FontSize.xs, color: Colors.textMuted },
-  errorList: { marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border },
-  errorTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.warning, marginBottom: 4 },
-  errorItem: { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 16 },
+  resultNum: { fontSize: 24, fontWeight: '800', color: '#0A66C2' },
+  resultLabel: { fontSize: 11, color: '#999999' },
+  errorList: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#DCE6F1' },
+  errorTitle: { fontSize: 13, fontWeight: '700', color: '#E16745', marginBottom: 4 },
+  errorItem: { fontSize: 11, color: '#999999', lineHeight: 16 },
 });

@@ -26,14 +26,14 @@ export default function AdminDashboardScreen() {
   };
   useEffect(() => { fetch(); }, []);
 
-  if (loading) return <View style={s.container}><ActivityIndicator size="large" color={Colors.roleAdmin} /></View>;
+  if (loading) return <View style={s.container}><ActivityIndicator size="large" color={'#004182'} /></View>;
 
   return (
-    <ScrollView style={s.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={Colors.roleAdmin} />}>
+    <ScrollView style={s.container} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={'#004182'} />}>
       <View style={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}>
         {/* Hero */}
         <View style={s.hero}>
-          <Ionicons name="shield-checkmark" size={32} color={Colors.roleAdmin} />
+          <Ionicons name="shield-checkmark" size={32} color={'#004182'} />
           <View style={{ flex: 1 }}>
             <Text style={s.heroTitle}>Admin Dashboard</Text>
             <Text style={s.heroSub}>Platform Overview</Text>
@@ -105,23 +105,23 @@ export default function AdminDashboardScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
   hero: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingTop: 32, marginBottom: Spacing.sm },
-  heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
-  heroSub: { fontSize: FontSize.sm, color: Colors.textMuted },
+  heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#191919' },
+  heroSub: { fontSize: FontSize.sm, color: '#999999' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  statCard: { width: '31%' as any, backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md, padding: Spacing.sm, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: Colors.border },
+  statCard: { width: '31%' as any, backgroundColor: '#FFFFFF', borderRadius: BorderRadius.md, padding: Spacing.sm, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: '#DCE6F1' },
   statIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  statNum: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.textPrimary },
-  statLabel: { fontSize: 10, color: Colors.textMuted },
+  statNum: { fontSize: FontSize.lg, fontWeight: '900', color: '#191919' },
+  statLabel: { fontSize: 10, color: '#999999' },
   section: { gap: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
+  sectionTitle: { fontSize: FontSize.md, fontWeight: '700', color: '#666666' },
   breakdownRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  breakdownChip: { backgroundColor: Colors.bgCard, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
-  breakdownRole: { fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'capitalize' },
-  breakdownCount: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.textPrimary },
+  breakdownChip: { backgroundColor: '#FFFFFF', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: '#DCE6F1', alignItems: 'center' },
+  breakdownRole: { fontSize: FontSize.xs, color: '#999999', textTransform: 'capitalize' },
+  breakdownCount: { fontSize: FontSize.lg, fontWeight: '800', color: '#191919' },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  actionCard: { width: '48%' as any, backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md, padding: Spacing.md, gap: 4, borderWidth: 1, borderColor: Colors.border },
-  actionText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  actionSub: { fontSize: FontSize.xs, color: Colors.textMuted },
+  actionCard: { width: '48%' as any, backgroundColor: '#FFFFFF', borderRadius: BorderRadius.md, padding: Spacing.md, gap: 4, borderWidth: 1, borderColor: '#DCE6F1' },
+  actionText: { fontSize: FontSize.md, fontWeight: '700', color: '#191919' },
+  actionSub: { fontSize: FontSize.xs, color: '#999999' },
 });

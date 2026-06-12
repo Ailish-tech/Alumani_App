@@ -1,81 +1,113 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform, Animated, Dimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useNavigation } from '@react-navigation/native';
+import PremiumHeader from '../../components/PremiumHeader';
 
-const ALUMNI_ITEMS = [
-  // Alumni-specific actions (they CREATE content for students)
-  { title: 'Post a Job', subtitle: 'Help students find opportunities', icon: 'briefcase', color: '#00E676', screen: 'JobBoard' },
-  { title: 'Create Event', subtitle: 'Organize meetups & webinars', icon: 'calendar', color: '#6C63FF', screen: 'Events' },
-  { title: 'Set Office Hours', subtitle: 'Offer 1-on-1 mentoring slots', icon: 'time', color: '#FF9800', screen: 'Booking' },
-  { title: 'Answer Questions', subtitle: 'Help students via Q&A', icon: 'help-circle', color: '#FF5252', screen: 'QA' },
-  { title: 'Share Resources', subtitle: 'Upload study materials', icon: 'document-text', color: '#448AFF', screen: 'Resources' },
-  // Professional features
-  { title: 'Referrals', subtitle: 'Refer students to companies', icon: 'paper-plane', color: '#E040FB', screen: 'Referrals' },
-  { title: 'Success Stories', subtitle: 'Share your career journey', icon: 'book', color: '#FF9800', screen: 'Stories' },
-  { title: 'Company Directory', subtitle: 'Register your company', icon: 'business', color: '#00BCD4', screen: 'CompanyDirectory' },
-  // Shared features
-  { title: '🧠 AI Insights', subtitle: 'Smart job match, similar profiles', icon: 'sparkles', color: '#A855F7', screen: 'SmartInsights' },
-  { title: 'Groups', subtitle: 'Join interest-based clubs', icon: 'people', color: '#FFD600', screen: 'Groups' },
-  { title: 'Polls', subtitle: 'Create & vote on polls', icon: 'bar-chart', color: '#FF6E40', screen: 'Polls' },
-  { title: 'Alumni Network', subtitle: 'Find fellow alumni', icon: 'search', color: '#00D9FF', screen: 'AlumniSearch' },
-  { title: 'Career Explorer', subtitle: 'Alumni career statistics', icon: 'trending-up', color: '#E040FB', screen: 'CareerExplorer' },
-  { title: 'My Goals', subtitle: 'Track your career goals', icon: 'flag', color: '#00BCD4', screen: 'Goals' },
-  { title: 'Resume Builder', subtitle: 'Generate your resume', icon: 'document', color: '#8BC34A', screen: 'ResumeBuilder' },
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ─── Give Back (primary alumni actions) ──────────────────────────────────────
+const GIVE_BACK: { title: string; sub: string; icon: string; gradient: [string, string]; screen: string }[] = [
+  { title: 'Post a Job', sub: 'Help students find opportunities', icon: 'briefcase', gradient: ['#34C759', '#30D158'], screen: 'JobBoard' },
+  { title: 'Create Event', sub: 'Organize meetups & webinars', icon: 'calendar', gradient: ['#5856D6', '#AF52DE'], screen: 'Events' },
+  { title: 'Office Hours', sub: 'Offer 1-on-1 mentoring slots', icon: 'time', gradient: ['#FF9500', '#FFCC00'], screen: 'Booking' },
+  { title: 'Answer Q&A', sub: 'Help students via Q&A', icon: 'help-circle', gradient: ['#FF3B30', '#FF6B6B'], screen: 'QA' },
+  { title: 'Share Resources', sub: 'Upload study materials', icon: 'document-text', gradient: ['#007AFF', '#5AC8FA'], screen: 'Resources' },
+  { title: 'Referrals', sub: 'Refer students to companies', icon: 'paper-plane', gradient: ['#AF52DE', '#BF5AF2'], screen: 'Referrals' },
+  { title: 'Success Stories', sub: 'Share your career journey', icon: 'book', gradient: ['#FF9500', '#FFCC00'], screen: 'Stories' },
+  { title: 'Company Directory', sub: 'Register your company', icon: 'business', gradient: ['#5AC8FA', '#007AFF'], screen: 'CompanyDirectory' },
 ];
+
+// ─── Community & Career (shared features) ────────────────────────────────────
+const COMMUNITY: { title: string; icon: string; gradient: [string, string]; screen: string }[] = [
+  { title: 'AI Insights', icon: 'sparkles', gradient: ['#AF52DE', '#BF5AF2'], screen: 'SmartInsights' },
+  { title: 'Groups', icon: 'people', gradient: ['#FF9500', '#FFCC00'], screen: 'Groups' },
+  { title: 'Polls', icon: 'bar-chart', gradient: ['#FF6B6B', '#FF3B30'], screen: 'Polls' },
+  { title: 'Network', icon: 'search', gradient: ['#5AC8FA', '#007AFF'], screen: 'AlumniSearch' },
+  { title: 'Careers', icon: 'trending-up', gradient: ['#AF52DE', '#BF5AF2'], screen: 'CareerExplorer' },
+  { title: 'Goals', icon: 'flag', gradient: ['#34C759', '#30D158'], screen: 'Goals' },
+  { title: 'Resume', icon: 'document', gradient: ['#007AFF', '#5AC8FA'], screen: 'ResumeBuilder' },
+  { title: 'Analytics', icon: 'analytics', gradient: ['#FF3B30', '#FF9500'], screen: 'MLAnalytics' },
+];
+
+// ─── Action Card ─────────────────────────────────────────────────────────────
+function ActionRow({ item, index, onPress }: { item: typeof GIVE_BACK[0]; index: number; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 9, delay: index * 50 }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: anim, transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }] }}>
+      <TouchableOpacity style={s.actionRow} activeOpacity={0.75} onPress={onPress}>
+        <LinearGradient colors={item.gradient} style={s.actionIcon}>
+          <Ionicons name={item.icon as any} size={20} color="#fff" />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={s.actionTitle}>{item.title}</Text>
+          <Text style={s.actionSub}>{item.sub}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+// ─── Community Grid Tile ─────────────────────────────────────────────────────
+function CommunityTile({ item, index, onPress }: { item: typeof COMMUNITY[0]; index: number; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 9, delay: 400 + index * 60 }).start();
+  }, []);
+
+  return (
+    <Animated.View style={[{ opacity: anim, transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }] }]}>
+      <TouchableOpacity style={s.communityTile} activeOpacity={0.75} onPress={onPress}>
+        <LinearGradient colors={item.gradient} style={s.communityIcon}>
+          <Ionicons name={item.icon as any} size={20} color="#fff" />
+        </LinearGradient>
+        <Text style={s.communityText}>{item.title}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function AlumniExploreScreen() {
   const navigation = useNavigation();
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.grid}>
-        {/* Alumni Impact Stats Banner */}
-        <View style={styles.banner}>
-          <Ionicons name="ribbon" size={28} color={Colors.roleAlumni} />
+    <View style={s.container}>
+      <PremiumHeader title="Alumni Hub" subtitle="Give back to your community" showNotifications />
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        
+        {/* Hero Banner */}
+        <View style={s.heroBanner}>
+          <LinearGradient colors={['#E0F2F1', '#B2DFDB']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+          <View style={s.heroBannerIcon}>
+            <Ionicons name="ribbon" size={24} color="#00897B" />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>Alumni Dashboard</Text>
-            <Text style={styles.bannerSubtitle}>Give back to your college community</Text>
+            <Text style={s.heroBannerTitle}>Alumni Network</Text>
+            <Text style={s.heroBannerSub}>Give back, mentor students & grow your impact</Text>
           </View>
         </View>
 
-        {/* Section: Give Back */}
-        <Text style={styles.sectionTitle}>🎓 Give Back</Text>
-        {ALUMNI_ITEMS.slice(0, 8).map((item) => (
-          <TouchableOpacity
-            key={item.screen}
-            style={styles.wideCard}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate(item.screen as any)}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: `${item.color}20` }]}>
-              <Ionicons name={item.icon as any} size={24} color={item.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-          </TouchableOpacity>
-        ))}
+        {/* Give Back Section */}
+        <Text style={s.sectionLabel}>🎓 Give Back</Text>
+        <View style={s.actionList}>
+          {GIVE_BACK.map((item, i) => (
+            <ActionRow key={item.screen} item={item} index={i} onPress={() => navigation.navigate(item.screen as any)} />
+          ))}
+        </View>
 
-        {/* Section: Community */}
-        <Text style={[styles.sectionTitle, { marginTop: Spacing.lg }]}>🤝 Community & Career</Text>
-        <View style={styles.gridRow}>
-          {ALUMNI_ITEMS.slice(8).map((item) => (
-            <TouchableOpacity
-              key={item.screen}
-              style={styles.gridCard}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate(item.screen as any)}
-            >
-              <View style={[styles.iconCircle, { backgroundColor: `${item.color}20` }]}>
-                <Ionicons name={item.icon as any} size={24} color={item.color} />
-              </View>
-              <Text style={styles.gridCardTitle}>{item.title}</Text>
-              <Text style={styles.gridCardSub}>{item.subtitle}</Text>
-            </TouchableOpacity>
+        {/* Community Grid */}
+        <Text style={s.sectionLabel}>🤝 Community & Career</Text>
+        <View style={s.communityGrid}>
+          {COMMUNITY.map((item, i) => (
+            <CommunityTile key={item.screen} item={item} index={i} onPress={() => navigation.navigate(item.screen as any)} />
           ))}
         </View>
       </ScrollView>
@@ -83,32 +115,52 @@ export default function AlumniExploreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  grid: { padding: Spacing.md, gap: Spacing.sm, paddingBottom: 100 },
-  banner: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: `${Colors.roleAlumni}15`, borderRadius: BorderRadius.md,
-    padding: Spacing.lg, borderWidth: 1, borderColor: `${Colors.roleAlumni}30`,
-    marginBottom: Spacing.sm,
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+
+  // Hero
+  heroBanner: {
+    marginHorizontal: 16, marginTop: 12, borderRadius: 20, overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 4,
   },
-  bannerTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.roleAlumni },
-  bannerSubtitle: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary, marginTop: Spacing.sm, marginBottom: Spacing.xs },
-  wideCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+  heroBannerIcon: {
+    width: 48, height: 48, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  cardSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted },
-  gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  gridCard: {
-    width: '48%' as any, backgroundColor: Colors.bgCard,
-    borderRadius: BorderRadius.md, padding: Spacing.md,
-    borderWidth: 1, borderColor: Colors.border, gap: Spacing.xs,
+  heroBannerTitle: { fontSize: 18, fontWeight: '700', color: '#00695C', letterSpacing: -0.3 },
+  heroBannerSub: { fontSize: 13, color: '#00897B', marginTop: 2 },
+
+  // Section label
+  sectionLabel: {
+    fontSize: 17, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3,
+    paddingHorizontal: 16, marginTop: 22, marginBottom: 10,
   },
-  gridCardTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
-  gridCardSub: { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 16 },
+
+  // Action list
+  actionList: {
+    backgroundColor: '#FFF', marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
+  },
+  actionRow: {
+    flexDirection: 'row', alignItems: 'center', padding: 14, gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F2F2F7',
+  },
+  actionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  actionTitle: { fontSize: 15, fontWeight: '600', color: '#1C1C1E', letterSpacing: -0.2 },
+  actionSub: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
+
+  // Community grid
+  communityGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 10,
+  },
+  communityTile: {
+    width: (SCREEN_WIDTH - 52) / 4,
+    backgroundColor: '#FFF', borderRadius: 16, paddingVertical: 14,
+    alignItems: 'center', gap: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  communityIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  communityText: { fontSize: 11, fontWeight: '600', color: '#1C1C1E', textAlign: 'center' },
 });

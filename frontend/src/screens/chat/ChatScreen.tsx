@@ -4,11 +4,20 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket, connectSocket } from '../../services/socket';
 import { Message } from '../../types';
+
+// ─── LinkedIn-Inspired Colors ───────────────────────────────────────────────
+const LI = {
+  blue: '#0A66C2',
+  white: '#FFFFFF',
+  bgLight: '#F3F2EF',
+  border: '#DCE6F1',
+  textDark: '#191919',
+  textSecondary: '#666666',
+};
 
 export default function ChatScreen({ route, navigation }: any) {
   const { roomId, otherUserName } = route.params;
@@ -21,17 +30,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const roomMessages = messages[roomId] || [];
 
-  // Set header title
   useEffect(() => {
-    navigation.setOptions({
-      headerTitle: otherUserName || 'Chat',
-    });
+    navigation.setOptions({ headerTitle: otherUserName || 'Chat' });
   }, [otherUserName]);
 
-  // Fetch messages and setup socket
   useEffect(() => {
     fetchMessages(roomId);
-
     let cleanedUp = false;
 
     (async () => {
@@ -39,25 +43,15 @@ export default function ChatScreen({ route, navigation }: any) {
       if (cleanedUp) return;
 
       socket.on('connect', () => {
-        console.log('[Chat] Socket connected');
         setIsConnected(true);
         socket.emit('chat:joinRoom', { roomId });
       });
 
-      socket.on('disconnect', () => {
-        console.log('[Chat] Socket disconnected');
-        setIsConnected(false);
-      });
-
-      socket.on('connect_error', (err: any) => {
-        console.log('[Chat] Socket connect error:', err.message);
-        setIsConnected(false);
-      });
+      socket.on('disconnect', () => setIsConnected(false));
+      socket.on('connect_error', () => setIsConnected(false));
 
       socket.on('chat:newMessage', (message: Message) => {
-        if (message.roomId === roomId) {
-          addMessage(message);
-        }
+        if (message.roomId === roomId) addMessage(message);
       });
 
       socket.on('chat:typing', (data: { userId: string; roomId: string }) => {
@@ -67,7 +61,6 @@ export default function ChatScreen({ route, navigation }: any) {
         }
       });
 
-      // If already connected, join immediately
       if (socket.connected) {
         setIsConnected(true);
         socket.emit('chat:joinRoom', { roomId });
@@ -91,19 +84,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
-
     const socket = getSocket();
-    if (!socket) {
-      console.warn('[Chat] No socket to send');
-      return;
-    }
+    if (!socket) return;
 
-    socket.emit('chat:sendMessage', {
-      roomId,
-      content: trimmed,
-    });
+    socket.emit('chat:sendMessage', { roomId, content: trimmed });
 
-    // Optimistic add
     const optimistic: Message = {
       id: `temp-${Date.now()}`,
       roomId,
@@ -118,19 +103,19 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleTyping = useCallback(() => {
     const socket = getSocket();
-    if (socket) {
-      socket.emit('chat:typing', { roomId });
-    }
+    if (socket) socket.emit('chat:typing', { roomId });
   }, [roomId]);
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.senderId === user?.id;
     return (
-      <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
-        <Text style={[styles.messageText, isMe && styles.myMessageText]}>{item.content}</Text>
-        <Text style={[styles.messageTime, isMe && styles.myMessageTime]}>
-          {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+      <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
+        <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
+          <Text style={[styles.messageText, isMe && styles.myMessageText]}>{item.content}</Text>
+          <Text style={[styles.messageTime, isMe && styles.myMessageTime]}>
+            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
       </View>
     );
   };
@@ -144,7 +129,7 @@ export default function ChatScreen({ route, navigation }: any) {
       {/* Connection status */}
       {!isConnected && (
         <View style={styles.statusBar}>
-          <ActivityIndicator size="small" color={Colors.warning} />
+          <ActivityIndicator size="small" color="#E16745" />
           <Text style={styles.statusText}>Connecting...</Text>
         </View>
       )}
@@ -159,7 +144,7 @@ export default function ChatScreen({ route, navigation }: any) {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubble-ellipses-outline" size={40} color={Colors.textMuted} />
+            <Ionicons name="chatbubble-ellipses-outline" size={40} color={LI.textSecondary} />
             <Text style={styles.emptyText}>Start a conversation!</Text>
           </View>
         }
@@ -178,8 +163,8 @@ export default function ChatScreen({ route, navigation }: any) {
           style={styles.input}
           value={text}
           onChangeText={(v) => { setText(v); handleTyping(); }}
-          placeholder="Type a message..."
-          placeholderTextColor={Colors.textMuted}
+          placeholder="Write a message..."
+          placeholderTextColor="#999"
           multiline
           maxLength={1000}
         />
@@ -188,7 +173,7 @@ export default function ChatScreen({ route, navigation }: any) {
           onPress={handleSend}
           disabled={!text.trim()}
         >
-          <Ionicons name="send" size={20} color={text.trim() ? '#fff' : Colors.textMuted} />
+          <Ionicons name="send" size={18} color={text.trim() ? '#fff' : '#BDBDBD'} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -196,54 +181,56 @@ export default function ChatScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: LI.bgLight },
   statusBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs,
-    backgroundColor: 'rgba(255, 214, 0, 0.1)', paddingVertical: Spacing.xs,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#FEF3C7', paddingVertical: 6,
   },
-  statusText: { fontSize: FontSize.xs, color: Colors.warning },
+  statusText: { fontSize: 12, color: '#92400E' },
   messagesList: {
-    padding: Spacing.md, paddingBottom: Spacing.lg, flexGrow: 1, justifyContent: 'flex-end',
+    padding: 16, paddingBottom: 8, flexGrow: 1, justifyContent: 'flex-end',
   },
+  messageRow: { marginBottom: 4 },
+  messageRowMe: { alignItems: 'flex-end' },
   messageBubble: {
-    maxWidth: '78%', padding: Spacing.sm, paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg, marginBottom: Spacing.xs,
+    maxWidth: '78%', padding: 10, paddingHorizontal: 14,
+    borderRadius: 18, marginBottom: 2,
   },
   myBubble: {
-    backgroundColor: Colors.primary, alignSelf: 'flex-end',
+    backgroundColor: LI.blue, alignSelf: 'flex-end',
     borderBottomRightRadius: 4,
   },
   theirBubble: {
-    backgroundColor: Colors.bgCard, alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: LI.white, alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
   },
-  messageText: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 20 },
+  messageText: { fontSize: 15, color: LI.textDark, lineHeight: 21 },
   myMessageText: { color: '#fff' },
-  messageTime: { fontSize: 10, color: Colors.textMuted, alignSelf: 'flex-end', marginTop: 2 },
-  myMessageTime: { color: 'rgba(255,255,255,0.7)' },
-  typingIndicator: {
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xs,
-  },
-  typingText: { fontSize: FontSize.xs, color: Colors.textMuted, fontStyle: 'italic' },
+  messageTime: { fontSize: 10, color: LI.textSecondary, alignSelf: 'flex-end', marginTop: 3 },
+  myMessageTime: { color: 'rgba(255,255,255,0.65)' },
+  typingIndicator: { paddingHorizontal: 20, paddingVertical: 4 },
+  typingText: { fontSize: 12, color: LI.textSecondary, fontStyle: 'italic' },
   inputContainer: {
     flexDirection: 'row', alignItems: 'flex-end',
-    padding: Spacing.sm, paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.bgCard, borderTopWidth: 1, borderTopColor: Colors.border,
-    gap: Spacing.sm,
+    padding: 10, paddingHorizontal: 14,
+    backgroundColor: LI.white, borderTopWidth: 1, borderTopColor: LI.border,
+    gap: 10,
   },
   input: {
-    flex: 1, backgroundColor: Colors.bgDark,
-    borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm, fontSize: FontSize.md,
-    color: Colors.textPrimary, maxHeight: 100,
-    borderWidth: 1, borderColor: Colors.border,
+    flex: 1, backgroundColor: LI.bgLight,
+    borderRadius: 20, paddingHorizontal: 16,
+    paddingVertical: 10, fontSize: 15,
+    color: LI.textDark, maxHeight: 100,
+    borderWidth: 1, borderColor: LI.border,
   },
   sendButton: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: LI.blue,
     alignItems: 'center', justifyContent: 'center',
   },
-  sendButtonDisabled: { backgroundColor: Colors.bgCard },
-  emptyState: { alignItems: 'center', paddingTop: 40, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  sendButtonDisabled: { backgroundColor: LI.bgLight },
+  emptyState: { alignItems: 'center', paddingTop: 40, gap: 8 },
+  emptyText: { fontSize: 14, color: LI.textSecondary },
 });

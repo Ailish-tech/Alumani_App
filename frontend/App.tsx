@@ -5,6 +5,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { Colors, Spacing, FontSize } from './src/constants/theme';
 import { useAuthStore } from './src/store/authStore';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { AppleAlertProvider } from './src/components/AppleAlert';
 
 function AppContent() {
   const { hydrate, isHydrated } = useAuthStore();
@@ -30,7 +31,9 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <ErrorBoundary>
-        <AppContent />
+        <AppleAlertProvider>
+          <AppContent />
+        </AppleAlertProvider>
       </ErrorBoundary>
     </View>
   );

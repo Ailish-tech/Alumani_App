@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert,
 } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { Connection, ConnectionStatus } from '../../types';
@@ -29,10 +30,10 @@ export default function ConnectionsScreen() {
       await api.put(`/connections/${otherUserId}/respond`, { status });
       fetchConnections();
       if (status === 'ACCEPTED') {
-        Alert.alert('Connected!', 'A chat room has been created. You can now message each other.');
+        AppleAlert.alert('Connected', 'A chat room has been created. You can now message each other.');
       }
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Failed');
+      AppleAlert.alert('Error', e.response?.data?.error || 'Failed');
     }
   };
 
@@ -43,9 +44,9 @@ export default function ConnectionsScreen() {
     conn.status === ConnectionStatus.PENDING && conn.requesterId !== user?.id;
 
   const statusColor = (s: ConnectionStatus) => {
-    if (s === ConnectionStatus.ACCEPTED) return Colors.success;
-    if (s === ConnectionStatus.PENDING) return Colors.warning;
-    return Colors.error;
+    if (s === ConnectionStatus.ACCEPTED) return '#057642';
+    if (s === ConnectionStatus.PENDING) return '#E16745';
+    return '#CC1016';
   };
 
   return (
@@ -59,7 +60,7 @@ export default function ConnectionsScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.avatar}>
-                  <Ionicons name="person" size={20} color={Colors.primary} />
+                  <Ionicons name="person" size={20} color={'#0A66C2'} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.userName}>{otherId.substring(0, 16)}</Text>
@@ -73,14 +74,14 @@ export default function ConnectionsScreen() {
               {isPendingForMe(item) && (
                 <View style={styles.actionRow}>
                   <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: Colors.success }]}
+                    style={[styles.actionBtn, { backgroundColor: '#057642' }]}
                     onPress={() => respondToConnection(otherId, 'ACCEPTED')}
                   >
                     <Ionicons name="checkmark" size={18} color="#fff" />
                     <Text style={styles.actionText}>Accept</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: Colors.error }]}
+                    style={[styles.actionBtn, { backgroundColor: '#CC1016' }]}
                     onPress={() => respondToConnection(otherId, 'REJECTED')}
                   >
                     <Ionicons name="close" size={18} color="#fff" />
@@ -91,11 +92,11 @@ export default function ConnectionsScreen() {
             </View>
           );
         }}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchConnections} tintColor={Colors.primary} />}
-        contentContainerStyle={{ padding: Spacing.md }}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchConnections} tintColor={'#0A66C2'} />}
+        contentContainerStyle={{ padding: 16 }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="link-outline" size={48} color={Colors.textMuted} />
+            <Ionicons name="link-outline" size={48} color={'#999999'} />
             <Text style={styles.emptyText}>No connections yet</Text>
           </View>
         }
@@ -105,28 +106,28 @@ export default function ConnectionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
   card: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    padding: 16, marginBottom: 8,
+    borderWidth: 1, borderColor: '#DCE6F1',
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.primaryGlow,
+    backgroundColor: '#E8F1FA',
     alignItems: 'center', justifyContent: 'center',
   },
-  userName: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.full, alignSelf: 'flex-start', marginTop: 4 },
+  userName: { fontSize: 15, fontWeight: '600', color: '#191919' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, alignSelf: 'flex-start', marginTop: 4 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: FontSize.xs, fontWeight: '600' },
-  actionRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md,
+    gap: 4, paddingVertical: 8, borderRadius: 8,
   },
-  actionText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
-  emptyState: { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.lg, color: Colors.textSecondary, fontWeight: '600' },
+  actionText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  emptyState: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  emptyText: { fontSize: 17, color: '#666666', fontWeight: '600' },
 });

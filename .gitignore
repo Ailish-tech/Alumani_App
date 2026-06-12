@@ -18,3 +18,7 @@ veda
 *.sw?
 .DS_Store
 .env
+
+images*
+*.jpg
+!frontend/assets/*.jpg

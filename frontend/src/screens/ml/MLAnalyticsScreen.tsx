@@ -1,164 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  StyleSheet, Platform, Animated, Dimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const METRIC_WIDTH = (SCREEN_WIDTH - 52) / 2;
 
 type Tab = 'sentiment' | 'engagement' | 'trending' | 'similar';
 
-export default function MLAnalyticsScreen() {
+const TABS: { key: Tab; label: string; iosIcon: string; gradient: [string, string] }[] = [
+  { key: 'sentiment', label: 'Sentiment', iosIcon: 'happy', gradient: ['#667EEA', '#764BA2'] },
+  { key: 'engagement', label: 'Engage', iosIcon: 'pulse', gradient: ['#43E97B', '#38F9D7'] },
+  { key: 'trending', label: 'Trending', iosIcon: 'flame', gradient: ['#FF6B6B', '#FFA07A'] },
+  { key: 'similar', label: 'Profiles', iosIcon: 'people', gradient: ['#4FACFE', '#00F2FE'] },
+];
+
+const ENDPOINTS: Record<Tab, string> = {
+  sentiment: '/ml/sentiment', engagement: '/ml/engagement',
+  trending: '/ml/trending-topics', similar: '/ml/similar-profiles',
+};
+
+// Safe array extractor
+function toArray(d: any): any[] {
+  if (Array.isArray(d)) return d;
+  if (d && typeof d === 'object') {
+    for (const key of ['data', 'profiles', 'results', 'items', 'users']) {
+      if (Array.isArray(d[key])) return d[key];
+    }
+  }
+  return [];
+}
+
+// ─── Metric Card ────────────────────────────────────────────────────────────
+function MetricCard({ value, label, gradient, icon }: { value: string | number; label: string; gradient: [string, string]; icon: string }) {
+  return (
+    <View style={s.metricCard}>
+      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.metricGradientBar} />
+      <View style={s.metricContent}>
+        <View style={s.metricIconRow}>
+          <Ionicons name={icon as any} size={16} color={gradient[0]} />
+        </View>
+        <Text style={s.metricNum}>{value}</Text>
+        <Text style={s.metricLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
+export default function MLAnalyticsScreen({ navigation }: any) {
   const [tab, setTab] = useState<Tab>('sentiment');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'sentiment', label: 'Sentiment', icon: '😊' },
-    { key: 'engagement', label: 'Engagement', icon: '📈' },
-    { key: 'trending', label: 'Trending', icon: '🔥' },
-    { key: 'similar', label: 'Profiles', icon: '👥' },
-  ];
-
-  const endpoints: Record<Tab, string> = {
-    sentiment: '/ml/sentiment',
-    engagement: '/ml/engagement',
-    trending: '/ml/trending-topics',
-    similar: '/ml/similar-profiles',
-  };
-
-  useEffect(() => { fetchData(); }, [tab]);
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    fetchData();
+  }, [tab]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const res = await api.get(endpoints[tab]);
+      const res = await api.get(ENDPOINTS[tab]);
       setData(res.data.data);
     } catch { setData(null); }
     setLoading(false);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
   }
 
+  // ── Sentiment ─────────────────────────────────────────────────────────────
   const renderSentiment = () => {
     const sm = data?.summary;
     return (
-      <View>
+      <View style={s.contentGap}>
         {sm && (
           <View style={s.metricsGrid}>
-            <View style={[s.metricCard, { borderLeftColor: '#10b981' }]}>
-              <Text style={s.metricNum}>{sm.positive}</Text>
-              <Text style={s.metricLabel}>Positive</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#f59e0b' }]}>
-              <Text style={s.metricNum}>{sm.neutral}</Text>
-              <Text style={s.metricLabel}>Neutral</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#ef4444' }]}>
-              <Text style={s.metricNum}>{sm.negative}</Text>
-              <Text style={s.metricLabel}>Negative</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#8b5cf6' }]}>
-              <Text style={s.metricNum}>{sm.avgScore}</Text>
-              <Text style={s.metricLabel}>Avg Score</Text>
-            </View>
+            <MetricCard value={sm.positive} label="Positive" gradient={['#34C759', '#30D158']} icon="happy-outline" />
+            <MetricCard value={sm.neutral} label="Neutral" gradient={['#FF9500', '#FFCC00']} icon="remove-circle-outline" />
+            <MetricCard value={sm.negative} label="Negative" gradient={['#FF3B30', '#FF6B6B']} icon="sad-outline" />
+            <MetricCard value={sm.avgScore} label="Avg Score" gradient={['#AF52DE', '#BF5AF2']} icon="analytics-outline" />
           </View>
         )}
-        <Text style={s.sectionTitle}>⚠️ Flagged Posts</Text>
+
+        <Text style={s.sectionLabel}>Flagged Posts</Text>
         {(data?.flagged || []).map((p: any, i: number) => (
-          <View key={i} style={[s.card, { borderLeftWidth: 3, borderLeftColor: '#ef4444' }]}>
-            <Text style={s.cardTitle}>{p.preview}...</Text>
-            <View style={s.row}>
-              <Text style={[s.sentimentBadge, { color: '#ef4444' }]}>Score: {p.score}</Text>
-              <Text style={s.cardSub}>{p.confidence * 100}% confidence</Text>
+          <View key={i} style={s.card}>
+            <View style={s.flagStripe} />
+            <View style={{ padding: 16 }}>
+              <Text style={s.cardTitle} numberOfLines={2}>{p.preview}...</Text>
+              <View style={[s.cardRow, { marginTop: 8 }]}>
+                <View style={s.scorePillRed}>
+                  <Text style={s.scorePillRedText}>Score: {p.score}</Text>
+                </View>
+                <Text style={s.cardSub}>{Math.round(p.confidence * 100)}% confidence</Text>
+              </View>
             </View>
           </View>
         ))}
+        {(!data?.flagged || data.flagged.length === 0) && <Text style={s.emptyText}>No flagged posts</Text>}
       </View>
     );
   };
 
+  // ── Engagement ────────────────────────────────────────────────────────────
   const renderEngagement = () => {
     const tiers = data?.tiers;
     return (
-      <View>
+      <View style={s.contentGap}>
         {tiers && (
           <View style={s.metricsGrid}>
-            <View style={[s.metricCard, { borderLeftColor: '#f59e0b' }]}>
-              <Text style={s.metricNum}>{tiers.champion}</Text>
-              <Text style={s.metricLabel}>🏆 Champion</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#10b981' }]}>
-              <Text style={s.metricNum}>{tiers.active}</Text>
-              <Text style={s.metricLabel}>⚡ Active</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#6366f1' }]}>
-              <Text style={s.metricNum}>{tiers.regular}</Text>
-              <Text style={s.metricLabel}>📋 Regular</Text>
-            </View>
-            <View style={[s.metricCard, { borderLeftColor: '#6b7280' }]}>
-              <Text style={s.metricNum}>{tiers.lurker}</Text>
-              <Text style={s.metricLabel}>👀 Lurker</Text>
-            </View>
+            <MetricCard value={tiers.champion} label="Champion" gradient={['#FF9500', '#FFCC00']} icon="trophy-outline" />
+            <MetricCard value={tiers.active} label="Active" gradient={['#34C759', '#30D158']} icon="flash-outline" />
+            <MetricCard value={tiers.regular} label="Regular" gradient={['#5856D6', '#AF52DE']} icon="clipboard-outline" />
+            <MetricCard value={tiers.lurker} label="Lurker" gradient={['#8E8E93', '#C7C7CC']} icon="eye-outline" />
           </View>
         )}
-        <Text style={s.sectionTitle}>Top Users</Text>
-        {(data?.users || []).slice(0, 15).map((u: any, i: number) => (
-          <View key={i} style={s.card}>
-            <View style={s.row}>
-              <Text style={s.rank}>#{i + 1}</Text>
+
+        <Text style={s.sectionLabel}>Top Users</Text>
+        {(data?.users || []).slice(0, 15).map((u: any, i: number) => {
+          const tierColor = u.tier === 'Champion' ? '#FF9500' : u.tier === 'Active' ? '#34C759' : '#8E8E93';
+          return (
+            <View key={i} style={s.card}>
+              <View style={{ padding: 16 }}>
+                <View style={s.cardRow}>
+                  <Text style={s.rankNum}>#{i + 1}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.cardTitle}>{u.fullName}</Text>
+                    <Text style={s.cardSub}>{u.role} · {u.tier}</Text>
+                  </View>
+                  <View style={[s.tierPill, { backgroundColor: `${tierColor}18` }]}>
+                    <Text style={[s.tierPillText, { color: tierColor }]}>{u.engagementScore}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+  // ── Trending ──────────────────────────────────────────────────────────────
+  const renderTrending = () => (
+    <View style={s.contentGap}>
+      <Text style={s.sectionLabel}>Trending Topics — Last 7 days</Text>
+      <Text style={[s.cardSub, { marginBottom: 8 }]}>{data?.totalPosts || 0} posts analyzed</Text>
+      {(data?.topics || []).map((t: any, i: number) => (
+        <View key={i} style={s.card}>
+          <View style={{ padding: 16 }}>
+            <View style={s.cardRow}>
+              <Text style={s.rankNum}>#{i + 1}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.cardTitle}>{u.fullName}</Text>
-                <Text style={s.cardSub}>{u.role} · {u.tier}</Text>
+                <Text style={s.cardTitle}>{t.topic}</Text>
+                <Text style={s.cardSub}>{t.mentions} mentions · {t.postsCount} posts</Text>
               </View>
-              <View style={[s.scoreBadge, {
-                backgroundColor: u.tier === 'Champion' ? '#f59e0b' : u.tier === 'Active' ? '#10b981' : '#6b7280'
-              }]}>
-                <Text style={s.scoreText}>{u.engagementScore}</Text>
+            </View>
+            {/* Progress bar */}
+            <View style={s.trendBarContainer}>
+              <LinearGradient
+                colors={['#FF6B6B', '#FFA07A']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={[s.trendBarFill, { width: `${Math.min(t.trendScore * 20, 100)}%` as any }]}
+              />
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+
+  // ── Similar Profiles ──────────────────────────────────────────────────────
+  const renderSimilar = () => {
+    const profiles = toArray(data);
+    return (
+      <View style={s.contentGap}>
+        <Text style={s.sectionLabel}>People Like You</Text>
+        {profiles.length === 0 && <Text style={s.emptyText}>No similar profiles found</Text>}
+        {profiles.map((p: any, i: number) => (
+          <View key={i} style={s.card}>
+            <View style={{ padding: 16 }}>
+              <View style={s.cardRow}>
+                <LinearGradient colors={['#4FACFE', '#00F2FE']} style={s.avatarCircle}>
+                  <Ionicons name="person" size={14} color="#fff" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardTitle}>{p.fullName}</Text>
+                  <Text style={s.cardSub}>{p.role} · {p.domain}</Text>
+                </View>
+                <View style={s.simPill}>
+                  <Text style={s.simPillText}>{p.similarity}%</Text>
+                </View>
               </View>
+              {p.commonSkills?.length > 0 && (
+                <View style={s.chipRow}>
+                  {p.commonSkills.slice(0, 4).map((sk: string, k: number) => (
+                    <View key={k} style={s.skillChip}><Text style={s.skillChipText}>{sk}</Text></View>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
         ))}
       </View>
     );
   };
-
-  const renderTrending = () => (
-    <View>
-      <Text style={s.sectionTitle}>🔥 Trending Topics (Last 7 days)</Text>
-      <Text style={s.cardSub}>{data?.totalPosts || 0} posts analyzed</Text>
-      {(data?.topics || []).map((t: any, i: number) => (
-        <View key={i} style={s.trendRow}>
-          <Text style={s.rank}>#{i + 1}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.trendWord}>{t.topic}</Text>
-            <Text style={s.cardSub}>{t.mentions} mentions · {t.postsCount} posts</Text>
-          </View>
-          <View style={s.trendBar}>
-            <View style={[s.trendFill, { width: `${Math.min(t.trendScore * 20, 100)}%` as any }]} />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-
-  const renderSimilar = () => (
-    <View>
-      <Text style={s.sectionTitle}>👥 People Like You</Text>
-      {(data || []).map((p: any, i: number) => (
-        <View key={i} style={s.card}>
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.cardTitle}>{p.fullName}</Text>
-              <Text style={s.cardSub}>{p.role} · {p.domain}</Text>
-            </View>
-            <View style={s.scoreBadge}><Text style={s.scoreText}>{p.similarity}%</Text></View>
-          </View>
-          {p.commonSkills?.length > 0 && (
-            <View style={s.skillRow}>
-              {p.commonSkills.slice(0, 4).map((sk: string, k: number) => (
-                <View key={k} style={s.skillChip}><Text style={s.skillChipText}>{sk}</Text></View>
-              ))}
-            </View>
-          )}
-        </View>
-      ))}
-    </View>
-  );
 
   const renderers: Record<Tab, () => React.JSX.Element> = {
     sentiment: renderSentiment, engagement: renderEngagement,
@@ -167,50 +216,124 @@ export default function MLAnalyticsScreen() {
 
   return (
     <View style={s.container}>
-      <Text style={s.header}>🤖 ML Analytics</Text>
+      {/* Header */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#1C1C1E" />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>ML Analytics</Text>
+        <View style={{ width: 38 }} />
+      </View>
+
+      {/* Tab Bar */}
       <View style={s.tabBar}>
-        {tabs.map(t => (
-          <TouchableOpacity key={t.key} style={[s.tab, tab === t.key && s.tabActive]} onPress={() => setTab(t.key)}>
-            <Text style={s.tabIcon}>{t.icon}</Text>
-            <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>{t.label}</Text>
+        {TABS.map(t => (
+          <TouchableOpacity key={t.key} onPress={() => setTab(t.key)} style={{ flex: 1 }} activeOpacity={0.8}>
+            {tab === t.key ? (
+              <LinearGradient colors={t.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.tabPill}>
+                <Ionicons name={t.iosIcon as any} size={15} color="#fff" />
+                <Text style={s.tabTextActive}>{t.label}</Text>
+              </LinearGradient>
+            ) : (
+              <View style={s.tabPillInactive}>
+                <Ionicons name={t.iosIcon as any} size={15} color="#8E8E93" />
+                <Text style={s.tabText}>{t.label}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
-      <ScrollView style={s.body} contentContainerStyle={{ paddingBottom: 40 }}>
-        {loading ? <ActivityIndicator size="large" color="#8b5cf6" style={{ marginTop: 40 }} /> : renderers[tab]()}
+
+      {/* Body */}
+      <ScrollView style={s.body} contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#667EEA" style={{ marginTop: 60 }} />
+        ) : (
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {renderers[tab]()}
+          </Animated.View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  header: { fontSize: 24, fontWeight: '700', color: '#fff', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  tabBar: { flexDirection: 'row', paddingHorizontal: 12, marginBottom: 8 },
-  tab: { flex: 1, paddingVertical: 10, marginHorizontal: 4, borderRadius: 12, backgroundColor: '#1e293b', alignItems: 'center' },
-  tabActive: { backgroundColor: '#8b5cf6' },
-  tabIcon: { fontSize: 18 },
-  tabLabel: { fontSize: 10, color: '#94a3b8', marginTop: 2 },
-  tabLabelActive: { color: '#fff', fontWeight: '600' },
-  body: { flex: 1, paddingHorizontal: 16 },
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  metricCard: { width: '47%' as any, backgroundColor: '#1e293b', borderRadius: 12, padding: 16, borderLeftWidth: 4 },
-  metricNum: { fontSize: 28, fontWeight: '800', color: '#f1f5f9' },
-  metricLabel: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
-  card: { backgroundColor: '#1e293b', borderRadius: 12, padding: 14, marginBottom: 10 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#f1f5f9' },
-  cardSub: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#f1f5f9', marginBottom: 8, marginTop: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  rank: { fontSize: 16, fontWeight: '700', color: '#8b5cf6', width: 32 },
-  scoreBadge: { backgroundColor: '#8b5cf6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  scoreText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  sentimentBadge: { fontSize: 14, fontWeight: '600' },
-  trendRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1e293b', gap: 8 },
-  trendWord: { fontSize: 15, fontWeight: '600', color: '#f1f5f9', textTransform: 'capitalize' },
-  trendBar: { width: 60, height: 6, backgroundColor: '#334155', borderRadius: 3, overflow: 'hidden' },
-  trendFill: { height: '100%', backgroundColor: '#f59e0b', borderRadius: 3 },
-  skillRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 },
-  skillChip: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  skillChipText: { color: '#e2e8f0', fontSize: 11 },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+
+  // Header
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 44, paddingBottom: 10,
+    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(120,120,128,0.08)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1C1C1E' },
+
+  // Tabs
+  tabBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FFF', gap: 6 },
+  tabPill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 14 },
+  tabPillInactive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 14, backgroundColor: 'rgba(120,120,128,0.08)' },
+  tabText: { fontSize: 12, color: '#8E8E93', fontWeight: '500' },
+  tabTextActive: { fontSize: 12, color: '#fff', fontWeight: '700' },
+
+  body: { flex: 1 },
+  contentGap: { gap: 10, marginTop: 16 },
+
+  // Section label
+  sectionLabel: { fontSize: 17, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.3, marginTop: 8, marginBottom: 4 },
+
+  // Metrics
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metricCard: {
+    width: METRIC_WIDTH, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  metricGradientBar: { height: 4 },
+  metricContent: { padding: 14 },
+  metricIconRow: { marginBottom: 8 },
+  metricNum: { fontSize: 28, fontWeight: '800', color: '#1C1C1E', letterSpacing: -0.5 },
+  metricLabel: { fontSize: 12, color: '#8E8E93', marginTop: 2, fontWeight: '500' },
+
+  // Cards
+  card: {
+    backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#1C1C1E', letterSpacing: -0.2 },
+  cardSub: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+
+  // Flag stripe
+  flagStripe: { height: 3, backgroundColor: '#FF3B30' },
+
+  // Score pills
+  scorePillRed: { backgroundColor: '#FF3B3018', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  scorePillRedText: { fontSize: 12, fontWeight: '700', color: '#FF3B30' },
+
+  // Rank
+  rankNum: { fontSize: 18, fontWeight: '800', color: '#667EEA', width: 36 },
+
+  // Tier pill
+  tierPill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+  tierPillText: { fontSize: 13, fontWeight: '700' },
+
+  // Trend bar
+  trendBarContainer: { height: 6, backgroundColor: '#F2F2F7', borderRadius: 3, marginTop: 10, overflow: 'hidden' },
+  trendBarFill: { height: '100%', borderRadius: 3 },
+
+  // Avatar
+  avatarCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+  // Similarity pill
+  simPill: { backgroundColor: '#4FACFE18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  simPillText: { fontSize: 13, fontWeight: '700', color: '#4FACFE' },
+
+  // Chips
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, gap: 6 },
+  skillChip: { backgroundColor: '#F2F2F7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  skillChipText: { color: '#3C3C43', fontSize: 12, fontWeight: '500' },
+
+  // Empty
+  emptyText: { fontSize: 15, color: '#8E8E93', textAlign: 'center', marginTop: 40 },
 });

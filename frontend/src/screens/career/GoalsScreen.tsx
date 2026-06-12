@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Alert, Modal, RefreshControl } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+
 import api from '../../services/api';
 
-export default function GoalsScreen() {
+
+// LinkedIn-Inspired Colors
+const LI = {
+  blue: '#0A66C2', white: '#FFF', bgLight: '#F2F2F7',
+  border: '#E5E5EA', textDark: '#1C1C1E', textSecondary: '#8E8E93',
+  green: '#057642',
+};export default function GoalsScreen() {
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -14,7 +21,7 @@ export default function GoalsScreen() {
   useEffect(() => { fetch(); }, []);
 
   const handleCreate = async () => {
-    if (!form.title) { Alert.alert('Error', 'Title required'); return; }
+    if (!form.title) { AppleAlert.alert('Error', 'Title required'); return; }
     await api.post('/features/goals', form); setShowCreate(false); setForm({ title: '', description: '' }); fetch();
   };
 
@@ -28,26 +35,26 @@ export default function GoalsScreen() {
       <View style={s.header}><Text style={s.title}>Goals</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => setShowCreate(true)}><Ionicons name="add" size={24} color="#fff" /></TouchableOpacity>
       </View>
-      <FlatList data={goals} keyExtractor={i => i.id} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={Colors.primary} />}
+      <FlatList data={goals} keyExtractor={i => i.id} contentContainerStyle={{ padding: 16, gap: 16 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={'#0A66C2'} />}
         renderItem={({ item }) => (
           <TouchableOpacity style={s.card} onPress={() => toggleStatus(item.id, item.status)} activeOpacity={0.7}>
             <Ionicons name={item.status === 'completed' ? 'checkmark-circle' : 'ellipse-outline'} size={24}
-              color={item.status === 'completed' ? Colors.success : Colors.textMuted} />
+              color={item.status === 'completed' ? '#057642' : '#C7C7CC'} />
             <View style={{ flex: 1 }}>
               <Text style={[s.goalTitle, item.status === 'completed' && s.completed]}>{item.title}</Text>
               {item.description ? <Text style={s.goalDesc}>{item.description}</Text> : null}
             </View>
-            <Ionicons name="flag" size={16} color={item.status === 'completed' ? Colors.success : Colors.warning} />
+            <Ionicons name="flag" size={16} color={item.status === 'completed' ? '#057642' : '#E16745'} />
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<View style={s.empty}><Ionicons name="flag-outline" size={48} color={Colors.textMuted} /><Text style={s.emptyText}>Set your first goal!</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><Ionicons name="flag-outline" size={48} color={'#C7C7CC'} /><Text style={s.emptyText}>Set your first goal!</Text></View>}
       />
       <Modal visible={showCreate} animationType="slide" transparent>
         <View style={s.overlay}><View style={s.modal}>
           <Text style={s.modalTitle}>New Goal</Text>
-          <TextInput style={s.input} placeholder="Goal title" placeholderTextColor={Colors.textMuted} value={form.title} onChangeText={t => setForm(p => ({ ...p, title: t }))} />
-          <TextInput style={[s.input, { height: 80 }]} placeholder="Description" placeholderTextColor={Colors.textMuted} value={form.description} onChangeText={t => setForm(p => ({ ...p, description: t }))} multiline />
+          <TextInput style={s.input} placeholder="Goal title" placeholderTextColor={'#C7C7CC'} value={form.title} onChangeText={t => setForm(p => ({ ...p, title: t }))} />
+          <TextInput style={[s.input, { height: 80 }]} placeholder="Description" placeholderTextColor={'#C7C7CC'} value={form.description} onChangeText={t => setForm(p => ({ ...p, description: t }))} multiline />
           <View style={s.actions}>
             <TouchableOpacity style={s.cancelBtn} onPress={() => setShowCreate(false)}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
             <TouchableOpacity style={s.createBtn} onPress={handleCreate}><Text style={s.createText}>Create</Text></TouchableOpacity>
@@ -58,23 +65,23 @@ export default function GoalsScreen() {
   );
 }
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 56, paddingBottom: Spacing.sm },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md },
-  goalTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  completed: { textDecorationLine: 'line-through', color: Colors.textMuted },
-  goalDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.md },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
-  overlay: { flex: 1, backgroundColor: Colors.bgOverlay, justifyContent: 'flex-end' },
-  modal: { backgroundColor: Colors.bgCard, borderTopLeftRadius: BorderRadius.lg, borderTopRightRadius: BorderRadius.lg, padding: Spacing.lg, gap: Spacing.md },
-  modalTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.textPrimary },
-  input: { backgroundColor: Colors.bgInput, borderRadius: BorderRadius.sm, padding: Spacing.md, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border },
-  actions: { flexDirection: 'row', gap: Spacing.md },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: BorderRadius.sm, backgroundColor: Colors.bgDark, alignItems: 'center' },
-  cancelText: { color: Colors.textSecondary, fontWeight: '600' },
-  createBtn: { flex: 1, padding: Spacing.md, borderRadius: BorderRadius.sm, backgroundColor: Colors.primary, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#1C1C1E' },
+  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0A66C2', alignItems: 'center', justifyContent: 'center' },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, gap: 16 },
+  goalTitle: { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
+  completed: { textDecorationLine: 'line-through', color: '#C7C7CC' },
+  goalDesc: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 16 },
+  emptyText: { fontSize: 15, color: '#C7C7CC' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#FFF', borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 24, gap: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1C1C1E' },
+  input: { backgroundColor: '#F2F2F7', borderRadius: 16, padding: 16, color: '#1C1C1E', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  actions: { flexDirection: 'row', gap: 16 },
+  cancelBtn: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#F2F2F7', alignItems: 'center' },
+  cancelText: { color: '#8E8E93', fontWeight: '600' },
+  createBtn: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#0A66C2', alignItems: 'center' },
   createText: { color: '#fff', fontWeight: '700' },
 });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import api from '../../services/api';
@@ -22,7 +23,7 @@ export default function VideoCallScreen({ route }: any) {
       // - res.data.data.channelName
       // - res.data.data.encryption (AES-256-GCM2 config)
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Failed to get video token');
+      AppleAlert.alert('Error', e.response?.data?.error || 'Failed to get video token');
     }
     setIsLoading(false);
   };
@@ -36,11 +37,11 @@ export default function VideoCallScreen({ route }: any) {
     return (
       <View style={styles.callContainer}>
         <View style={styles.remoteVideo}>
-          <Ionicons name="videocam" size={64} color={Colors.textMuted} />
+          <Ionicons name="videocam" size={64} color={'#999999'} />
           <Text style={styles.callInfoText}>Video Call Active</Text>
           <Text style={styles.channelText}>Channel: {tokenData.channelName}</Text>
           <View style={styles.encryptionBadge}>
-            <Ionicons name="lock-closed" size={14} color={Colors.success} />
+            <Ionicons name="lock-closed" size={14} color={'#057642'} />
             <Text style={styles.encryptionText}>AES-256-GCM2 E2EE</Text>
           </View>
         </View>
@@ -64,18 +65,18 @@ export default function VideoCallScreen({ route }: any) {
     <View style={styles.container}>
       <View style={styles.preCallCard}>
         <View style={styles.iconCircle}>
-          <Ionicons name="videocam" size={48} color={Colors.primary} />
+          <Ionicons name="videocam" size={48} color={'#0A66C2'} />
         </View>
         <Text style={styles.title}>Secure Video Call</Text>
         <Text style={styles.subtitle}>
           End-to-end encrypted with AES-256-GCM2
         </Text>
         <View style={styles.infoRow}>
-          <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
+          <Ionicons name="shield-checkmark" size={16} color={'#057642'} />
           <Text style={styles.infoText}>Your call is fully encrypted</Text>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="key" size={16} color={Colors.accent} />
+          <Ionicons name="key" size={16} color={'#0A66C2'} />
           <Text style={styles.infoText}>Session-unique encryption keys</Text>
         </View>
 
@@ -95,36 +96,36 @@ export default function VideoCallScreen({ route }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark, justifyContent: 'center', padding: Spacing.lg },
+  container: { flex: 1, backgroundColor: '#F3F2EF', justifyContent: 'center', padding: 24 },
   preCallCard: {
-    alignItems: 'center', padding: Spacing.xl,
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', padding: 32,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    borderWidth: 1, borderColor: '#DCE6F1',
   },
   iconCircle: {
     width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.primaryGlow,
+    backgroundColor: '#E8F1FA',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: Spacing.lg, borderWidth: 2, borderColor: Colors.primary,
+    marginBottom: 24, borderWidth: 2, borderColor: '#0A66C2',
   },
-  title: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
-  subtitle: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.md },
-  infoText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  title: { fontSize: 20, fontWeight: '800', color: '#191919' },
+  subtitle: { fontSize: 13, color: '#666666', marginTop: 4, textAlign: 'center' },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+  infoText: { fontSize: 13, color: '#666666' },
   joinButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.success, borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl,
-    marginTop: Spacing.xl, width: '100%',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#057642', borderRadius: 8,
+    paddingVertical: 16, paddingHorizontal: 32,
+    marginTop: 32, width: '100%',
   },
-  joinText: { fontSize: FontSize.lg, fontWeight: '700', color: '#fff' },
+  joinText: { fontSize: 17, fontWeight: '700', color: '#fff' },
   callContainer: { flex: 1, backgroundColor: '#000' },
-  remoteVideo: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-  callInfoText: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.textPrimary },
-  channelText: { fontSize: FontSize.sm, color: Colors.textMuted },
-  encryptionBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,230,118,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full },
-  encryptionText: { fontSize: FontSize.xs, color: Colors.success, fontWeight: '600' },
-  callControls: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.xl, padding: Spacing.xl, backgroundColor: 'rgba(0,0,0,0.8)' },
-  controlBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center' },
-  endCallBtn: { backgroundColor: Colors.error, transform: [{ rotate: '135deg' }] },
+  remoteVideo: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  callInfoText: { fontSize: 20, fontWeight: '700', color: '#191919' },
+  channelText: { fontSize: 13, color: '#999999' },
+  encryptionBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,230,118,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  encryptionText: { fontSize: 11, color: '#057642', fontWeight: '600' },
+  callControls: { flexDirection: 'row', justifyContent: 'center', gap: 32, padding: 32, backgroundColor: 'rgba(0,0,0,0.8)' },
+  controlBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  endCallBtn: { backgroundColor: '#CC1016', transform: [{ rotate: '135deg' }] },
 });

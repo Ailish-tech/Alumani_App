@@ -4,14 +4,20 @@ import {
   TextInput, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+
 import api from '../../services/api';
 import { User, Role } from '../../types';
 import { useNavigation } from '@react-navigation/native';
 
-const ROLE_COLORS: Record<string, string> = {
-  STUDENT: Colors.roleStudent, ALUMNI: Colors.roleAlumni,
-  FACULTY: Colors.roleFaculty, ADMIN: Colors.roleAdmin,
+
+// LinkedIn-Inspired Colors
+const LI = {
+  blue: '#0A66C2', white: '#FFF', bgLight: '#F2F2F7',
+  border: '#E5E5EA', textDark: '#1C1C1E', textSecondary: '#8E8E93',
+  green: '#057642',
+};const ROLE_COLORS: Record<string, string> = {
+  STUDENT: '#0A66C2', ALUMNI: '#057642',
+  FACULTY: '#5F4BB6', ADMIN: '#004182',
 };
 
 export default function AlumniSearchScreen() {
@@ -42,8 +48,8 @@ export default function AlumniSearchScreen() {
       <View style={styles.cardContent}>
         <Text style={styles.name}>{item.fullName}</Text>
         <View style={styles.metaRow}>
-          <View style={[styles.roleBadge, { backgroundColor: `${ROLE_COLORS[item.role] || Colors.primary}20` }]}>
-            <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] || Colors.primary }]}>{item.role}</Text>
+          <View style={[styles.roleBadge, { backgroundColor: `${ROLE_COLORS[item.role] || '#0A66C2'}20` }]}>
+            <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] || '#0A66C2' }]}>{item.role}</Text>
           </View>
           {item.domain ? <Text style={styles.domain}>{item.domain}</Text> : null}
         </View>
@@ -58,7 +64,7 @@ export default function AlumniSearchScreen() {
           </View>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+      <Ionicons name="chevron-forward" size={20} color={'#C7C7CC'} />
     </TouchableOpacity>
   );
 
@@ -71,9 +77,9 @@ export default function AlumniSearchScreen() {
       {/* Search bar */}
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color={Colors.textMuted} />
+          <Ionicons name="search" size={18} color={'#C7C7CC'} />
           <TextInput style={styles.searchInput} placeholder="Search by name, domain, skills..."
-            placeholderTextColor={Colors.textMuted} value={query}
+            placeholderTextColor={'#C7C7CC'} value={query}
             onChangeText={setQuery} onSubmitEditing={search} returnKeyType="search" />
         </View>
         <TouchableOpacity style={styles.searchBtn} onPress={search}>
@@ -94,16 +100,16 @@ export default function AlumniSearchScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={'#0A66C2'} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={results}
           keyExtractor={i => i.id}
           renderItem={renderUser}
-          contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
+          contentContainerStyle={{ padding: 16, gap: 8 }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="search-outline" size={48} color={Colors.textMuted} />
+              <Ionicons name="search-outline" size={48} color={'#C7C7CC'} />
               <Text style={styles.emptyText}>Search for alumni, faculty, or students</Text>
             </View>
           }
@@ -114,31 +120,31 @@ export default function AlumniSearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  header: { paddingHorizontal: Spacing.md, paddingTop: 56, paddingBottom: Spacing.sm },
-  heroTitle: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  searchRow: { flexDirection: 'row', paddingHorizontal: Spacing.md, gap: Spacing.sm, marginBottom: Spacing.sm },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.bgInput, borderRadius: BorderRadius.sm, paddingHorizontal: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  searchInput: { flex: 1, color: Colors.textPrimary, fontSize: FontSize.md, paddingVertical: Spacing.sm },
-  searchBtn: { width: 44, height: 44, borderRadius: BorderRadius.sm, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.md, gap: Spacing.sm, marginBottom: Spacing.sm },
-  chip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.full, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { backgroundColor: Colors.primaryGlow, borderColor: Colors.primary },
-  chipText: { fontSize: FontSize.sm, color: Colors.textMuted },
-  chipTextActive: { color: Colors.primary, fontWeight: '600' },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: BorderRadius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.primaryGlow, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary },
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  header: { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 8 },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: '#1C1C1E' },
+  searchRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 8 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F2F2F7', borderRadius: 16, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  searchInput: { flex: 1, color: '#1C1C1E', fontSize: 15, paddingVertical: 8 },
+  searchBtn: { width: 44, height: 44, borderRadius: 16, backgroundColor: '#0A66C2', alignItems: 'center', justifyContent: 'center' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 8 },
+  chip: { paddingHorizontal: 16, paddingVertical: 4, borderRadius: 999, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  chipActive: { backgroundColor: '#E8F1FA', borderColor: '#0A66C2' },
+  chipText: { fontSize: 13, color: '#C7C7CC' },
+  chipTextActive: { color: '#0A66C2', fontWeight: '600' },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, gap: 16 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#E8F1FA', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 17, fontWeight: '700', color: '#0A66C2' },
   cardContent: { flex: 1, gap: 4 },
-  name: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  roleBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 1, borderRadius: BorderRadius.full },
-  roleText: { fontSize: FontSize.xs, fontWeight: '600' },
-  domain: { fontSize: FontSize.xs, color: Colors.textSecondary },
+  name: { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  roleBadge: { paddingHorizontal: 8, paddingVertical: 1, borderRadius: 999 },
+  roleText: { fontSize: 11, fontWeight: '600' },
+  domain: { fontSize: 11, color: '#8E8E93' },
   skillsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  skillChip: { backgroundColor: Colors.bgDark, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
-  skillText: { fontSize: 10, color: Colors.textMuted },
-  moreSkills: { fontSize: 10, color: Colors.primary },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.md },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  skillChip: { backgroundColor: '#F2F2F7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 16 },
+  skillText: { fontSize: 10, color: '#C7C7CC' },
+  moreSkills: { fontSize: 10, color: '#0A66C2' },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 16 },
+  emptyText: { fontSize: 15, color: '#C7C7CC' },
 });

@@ -1,23 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
-  Image, Dimensions, FlatList, Alert,
+  Image, Dimensions, Alert, Animated,
 } from 'react-native';
+import { AppleAlert } from '../../components/AppleAlert';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 import { Role, User, Post } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import api from '../../services/api';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const GRID_ITEM_SIZE = (SCREEN_WIDTH - Spacing.md * 2 - 4) / 3; // 3 columns with 2px gaps
+const GRID_ITEM_SIZE = (SCREEN_WIDTH - 4) / 3;
+
+const LI = {
+  blue: '#0A66C2',
+  blueDark: '#004182',
+  white: '#FFFFFF',
+  bgLight: '#F3F2EF',
+  border: '#DCE6F1',
+  textDark: '#191919',
+  textSecondary: '#666666',
+  green: '#057642',
+};
 
 const ROLE_COLORS: Record<Role, string> = {
-  [Role.STUDENT]: Colors.roleStudent,
-  [Role.ALUMNI]: Colors.roleAlumni,
-  [Role.FACULTY]: Colors.roleFaculty,
-  [Role.ADMIN]: Colors.roleAdmin,
+  [Role.STUDENT]: LI.blue,
+  [Role.ALUMNI]: LI.green,
+  [Role.FACULTY]: '#5F4BB6',
+  [Role.ADMIN]: LI.blueDark,
 };
 
 function timeAgo(date: string) {
@@ -40,10 +51,20 @@ export default function UserProfileScreen({ route, navigation }: any) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [messageLoading, setMessageLoading] = useState(false);
 
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
   const isOwnProfile = currentUser?.id === userId;
+
+  useEffect(() => {
+    Animated.stagger(200, [
+      Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(contentAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+  }, [loading]);
 
   const handleMessage = async () => {
     setMessageLoading(true);
@@ -52,10 +73,10 @@ export default function UserProfileScreen({ route, navigation }: any) {
       if (room) {
         navigation.navigate('Chat', { roomId: room.id, otherUserName: user?.fullName });
       } else {
-        Alert.alert('Error', 'Could not start conversation. Please try again.');
+        AppleAlert.alert('Error', 'Could not start conversation.');
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not start conversation.');
+      AppleAlert.alert('Error', e?.message || 'Could not start conversation.');
     } finally {
       setMessageLoading(false);
     }
@@ -101,7 +122,7 @@ export default function UserProfileScreen({ route, navigation }: any) {
   if (loading) {
     return (
       <View style={s.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={LI.blue} />
       </View>
     );
   }
@@ -109,33 +130,51 @@ export default function UserProfileScreen({ route, navigation }: any) {
   if (!user) {
     return (
       <View style={s.loadingContainer}>
-        <Ionicons name="person-outline" size={48} color={Colors.textMuted} />
+        <Ionicons name="person-outline" size={48} color={LI.textSecondary} />
         <Text style={s.emptyText}>User not found</Text>
       </View>
     );
   }
 
-  const roleColor = ROLE_COLORS[user.role] || Colors.primary;
-  const postsWithImages = posts.filter((p: any) =>
-    (p.mediaUrls?.length > 0) || p.mediaUrl
-  );
+  const roleColor = ROLE_COLORS[user.role] || LI.blue;
 
   return (
     <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 100 }}>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          INSTAGRAM-STYLE HEADER
-          ═══════════════════════════════════════════════════════════════════════ */}
-      <View style={s.headerSection}>
-        <View style={s.headerRow}>
-          {/* Avatar */}
-          <View style={[s.avatarRing, { borderColor: roleColor }]}>
-            <View style={s.avatarInner}>
-              <Ionicons name="person" size={36} color={roleColor} />
-            </View>
+      {/* ── LinkedIn-Style Header ── */}
+      <Animated.View style={[s.headerSection, { opacity: headerAnim }]}>
+        <View style={s.bannerBar} />
+        <View style={s.headerContent}>
+          <View style={[s.avatarLarge, { backgroundColor: roleColor }]}>
+            <Ionicons name="person" size={36} color={LI.white} />
+          </View>
+          <Text style={s.displayName}>{user.fullName || user.id}</Text>
+          {user.bio ? <Text style={s.bioText}>{user.bio}</Text> : null}
+
+          <View style={[s.roleBadge, { backgroundColor: `${roleColor}15` }]}>
+            <Text style={[s.roleText, { color: roleColor }]}>
+              {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
+            </Text>
           </View>
 
-          {/* Stats Row: Posts / Followers / Following */}
+          {(user.workplace || user.domain) && (
+            <View style={s.infoTags}>
+              {user.domain ? (
+                <View style={s.infoTag}>
+                  <Ionicons name="briefcase-outline" size={13} color={LI.blue} />
+                  <Text style={s.infoTagText}>{user.domain}</Text>
+                </View>
+              ) : null}
+              {user.workplace ? (
+                <View style={s.infoTag}>
+                  <Ionicons name="business-outline" size={13} color={LI.blue} />
+                  <Text style={s.infoTagText}>{user.workplace}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
+          {/* Stats */}
           <View style={s.statsRow}>
             <View style={s.statItem}>
               <Text style={s.statNum}>{posts.length}</Text>
@@ -156,379 +195,291 @@ export default function UserProfileScreen({ route, navigation }: any) {
               <Text style={s.statLabel}>Following</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Name + Role Badge */}
-        <Text style={s.displayName}>{user.fullName || user.id}</Text>
-        <View style={[s.roleBadge, { backgroundColor: `${roleColor}20` }]}>
-          <Ionicons name="ribbon" size={12} color={roleColor} />
-          <Text style={[s.roleText, { color: roleColor }]}>
-            {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
-          </Text>
-        </View>
-
-        {/* Bio */}
-        {user.bio ? <Text style={s.bioText}>{user.bio}</Text> : null}
-
-        {/* Workplace / Domain tags */}
-        {(user.workplace || user.domain) && (
-          <View style={s.infoTags}>
-            {user.domain ? (
-              <View style={s.infoTag}>
-                <Ionicons name="briefcase-outline" size={13} color={Colors.accent} />
-                <Text style={s.infoTagText}>{user.domain}</Text>
-              </View>
-            ) : null}
-            {user.workplace ? (
-              <View style={s.infoTag}>
-                <Ionicons name="business-outline" size={13} color={Colors.accent} />
-                <Text style={s.infoTagText}>{user.workplace}</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {/* ── Action Buttons ── */}
-        {!isOwnProfile ? (
-          <View style={s.actionBtns}>
-            <TouchableOpacity
-              style={[s.primaryBtn, isFollowing && s.primaryBtnOutline]}
-              onPress={handleFollow}
-              disabled={followLoading}
-              activeOpacity={0.8}
-            >
-              {followLoading ? (
-                <ActivityIndicator size="small" color={isFollowing ? Colors.primary : '#fff'} />
-              ) : (
-                <Text style={[s.primaryBtnText, isFollowing && s.primaryBtnTextOutline]}>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.secondaryBtn}
-              onPress={handleMessage}
-              disabled={messageLoading}
-            >
-              {messageLoading ? (
-                <ActivityIndicator size="small" color={Colors.textPrimary} />
-              ) : (
-                <Text style={s.secondaryBtnText}>Message</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.iconBtn}
-              onPress={() => navigation.navigate('Endorsements', { userId })}
-            >
-              <Ionicons name="thumbs-up-outline" size={18} color={Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={s.editProfileBtn}
-            onPress={() => navigation.navigate('EditProfile')}
-          >
-            <Text style={s.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          HIGHLIGHTS-STYLE SKILLS
-          ═══════════════════════════════════════════════════════════════════════ */}
-      {user.skills && user.skills.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.skillsScroll}
-          contentContainerStyle={{ paddingHorizontal: Spacing.md, gap: Spacing.md }}>
-          {user.skills.map((skill, i) => (
-            <View key={i} style={s.skillHighlight}>
-              <View style={s.skillCircle}>
-                <Text style={s.skillEmoji}>
-                  {['💻', '🎨', '📊', '🔧', '🧠', '📱', '🌐', '⚡', '🔬', '📝'][i % 10]}
-                </Text>
-              </View>
-              <Text style={s.skillName} numberOfLines={1}>{skill}</Text>
+          {/* Action Buttons */}
+          {!isOwnProfile ? (
+            <View style={s.actionBtns}>
+              <TouchableOpacity
+                style={[s.primaryBtn, isFollowing && s.primaryBtnOutline]}
+                onPress={handleFollow}
+                disabled={followLoading}
+                activeOpacity={0.8}
+              >
+                {followLoading ? (
+                  <ActivityIndicator size="small" color={isFollowing ? LI.blue : '#fff'} />
+                ) : (
+                  <Text style={[s.primaryBtnText, isFollowing && s.primaryBtnTextOutline]}>
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.secondaryBtn} onPress={handleMessage} disabled={messageLoading}>
+                {messageLoading ? (
+                  <ActivityIndicator size="small" color={LI.blue} />
+                ) : (
+                  <Text style={s.secondaryBtnText}>Message</Text>
+                )}
+              </TouchableOpacity>
             </View>
-          ))}
-        </ScrollView>
-      )}
+          ) : (
+            <TouchableOpacity style={s.editProfileBtn} onPress={() => navigation.navigate('EditProfile')}>
+              <Ionicons name="pencil-outline" size={16} color={LI.blue} />
+              <Text style={s.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          TAB SWITCHER (Grid / List)
-          ═══════════════════════════════════════════════════════════════════════ */}
-      <View style={s.tabBar}>
-        <TouchableOpacity
-          style={[s.tab, viewMode === 'grid' && s.tabActive]}
-          onPress={() => setViewMode('grid')}
-        >
-          <Ionicons name="grid-outline" size={22} color={viewMode === 'grid' ? Colors.primary : Colors.textMuted} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.tab, viewMode === 'list' && s.tabActive]}
-          onPress={() => setViewMode('list')}
-        >
-          <Ionicons name="list-outline" size={22} color={viewMode === 'list' ? Colors.primary : Colors.textMuted} />
-        </TouchableOpacity>
-      </View>
+      {/* ── Skills ── */}
+      <Animated.View style={{ opacity: contentAnim }}>
+        {user.skills && user.skills.length > 0 && (
+          <View style={s.sectionCard}>
+            <Text style={s.sectionTitle}>Skills</Text>
+            <View style={s.skillsRow}>
+              {user.skills.map((skill, i) => (
+                <View key={i} style={s.skillChip}>
+                  <Text style={s.skillText}>{skill}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          POSTS — GRID VIEW (Instagram 3-column)
-          ═══════════════════════════════════════════════════════════════════════ */}
-      {viewMode === 'grid' ? (
-        posts.length === 0 ? (
-          <View style={s.emptyPosts}>
-            <Ionicons name="camera-outline" size={48} color={Colors.textMuted} />
-            <Text style={s.emptyTitle}>No Posts Yet</Text>
-          </View>
-        ) : (
-          <View style={s.gridContainer}>
-            {posts.map((post: any, idx) => {
-              const imgUrl = post.mediaUrls?.[0] || post.mediaUrl;
-              const hasMultiple = (post.mediaUrls?.length || 0) > 1;
-              return (
-                <TouchableOpacity key={post.id} style={s.gridItem} activeOpacity={0.8}>
-                  {imgUrl ? (
-                    <Image source={{ uri: imgUrl }} style={s.gridImage} resizeMode="cover" />
-                  ) : (
-                    <View style={s.gridTextPost}>
-                      <Text style={s.gridTextContent} numberOfLines={4}>{post.textContent}</Text>
-                    </View>
-                  )}
-                  {/* Multi-image indicator */}
-                  {hasMultiple && (
-                    <View style={s.multiIcon}>
-                      <Ionicons name="copy-outline" size={14} color="#fff" />
-                    </View>
-                  )}
-                  {/* Engagement overlay */}
-                  <View style={s.gridOverlay}>
-                    <View style={s.gridStat}>
-                      <Ionicons name="heart" size={12} color="#fff" />
-                      <Text style={s.gridStatText}>{post.likesCount}</Text>
-                    </View>
-                    <View style={s.gridStat}>
-                      <Ionicons name="chatbubble" size={11} color="#fff" />
-                      <Text style={s.gridStatText}>{post.commentsCount}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )
-      ) : (
-        /* ═══════════════════════════════════════════════════════════════════════
-           POSTS — LIST VIEW
-           ═══════════════════════════════════════════════════════════════════════ */
-        <View style={{ paddingHorizontal: Spacing.md }}>
-          {posts.length === 0 ? (
+        {/* ── Tab Switcher ── */}
+        <View style={s.tabBar}>
+          <TouchableOpacity
+            style={[s.tab, viewMode === 'list' && s.tabActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Ionicons name="list-outline" size={20} color={viewMode === 'list' ? LI.blue : LI.textSecondary} />
+            <Text style={[s.tabText, viewMode === 'list' && { color: LI.blue }]}>Posts</Text>
+            {viewMode === 'list' && <View style={s.tabIndicator} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.tab, viewMode === 'grid' && s.tabActive]}
+            onPress={() => setViewMode('grid')}
+          >
+            <Ionicons name="grid-outline" size={20} color={viewMode === 'grid' ? LI.blue : LI.textSecondary} />
+            <Text style={[s.tabText, viewMode === 'grid' && { color: LI.blue }]}>Grid</Text>
+            {viewMode === 'grid' && <View style={s.tabIndicator} />}
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Posts ── */}
+        {viewMode === 'grid' ? (
+          posts.length === 0 ? (
             <View style={s.emptyPosts}>
-              <Ionicons name="newspaper-outline" size={48} color={Colors.textMuted} />
+              <Ionicons name="camera-outline" size={48} color={LI.textSecondary} />
               <Text style={s.emptyTitle}>No Posts Yet</Text>
             </View>
           ) : (
-            posts.map((post: any) => {
-              const imgUrls: string[] = post.mediaUrls?.length
-                ? post.mediaUrls
-                : post.mediaUrl ? [post.mediaUrl] : [];
-              return (
-                <View key={post.id} style={s.listPostCard}>
-                  <View style={s.listPostHeader}>
-                    <View style={s.avatar}>
-                      <Ionicons name="person" size={16} color={roleColor} />
-                    </View>
-                    <View>
-                      <Text style={s.listPostAuthor}>{user.fullName}</Text>
-                      <Text style={s.listPostTime}>{timeAgo(post.createdAt)}</Text>
-                    </View>
-                  </View>
-                  <Text style={s.listPostContent}>{post.textContent}</Text>
-                  {imgUrls.length > 0 && (
-                    <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-                      {imgUrls.map((uri: string, i: number) => (
-                        <Image key={i} source={{ uri }} style={s.listPostImage} resizeMode="cover" />
-                      ))}
-                    </ScrollView>
-                  )}
-                  <View style={s.listPostFooter}>
-                    <View style={s.listPostStat}>
-                      <Ionicons name="heart" size={16} color={Colors.like} />
-                      <Text style={s.listPostStatText}>{post.likesCount}</Text>
-                    </View>
-                    <View style={s.listPostStat}>
-                      <Ionicons name="chatbubble" size={14} color={Colors.accent} />
-                      <Text style={s.listPostStatText}>{post.commentsCount}</Text>
+            <View style={s.gridContainer}>
+              {posts.map((post: any) => {
+                const imgUrl = post.mediaUrls?.[0] || post.mediaUrl;
+                return (
+                  <View key={post.id} style={s.gridItem}>
+                    {imgUrl ? (
+                      <Image source={{ uri: imgUrl }} style={s.gridImage} resizeMode="cover" />
+                    ) : (
+                      <View style={s.gridTextPost}>
+                        <Text style={s.gridTextContent} numberOfLines={4}>{post.textContent}</Text>
+                      </View>
+                    )}
+                    <View style={s.gridOverlay}>
+                      <View style={s.gridStat}>
+                        <Ionicons name="thumbs-up" size={11} color="#fff" />
+                        <Text style={s.gridStatText}>{post.likesCount}</Text>
+                      </View>
+                      <View style={s.gridStat}>
+                        <Ionicons name="chatbubble" size={10} color="#fff" />
+                        <Text style={s.gridStatText}>{post.commentsCount}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })
-          )}
-        </View>
-      )}
+                );
+              })}
+            </View>
+          )
+        ) : (
+          <View>
+            {posts.length === 0 ? (
+              <View style={s.emptyPosts}>
+                <Ionicons name="newspaper-outline" size={48} color={LI.textSecondary} />
+                <Text style={s.emptyTitle}>No Posts Yet</Text>
+              </View>
+            ) : (
+              posts.map((post: any) => {
+                const imgUrls: string[] = post.mediaUrls?.length
+                  ? post.mediaUrls : post.mediaUrl ? [post.mediaUrl] : [];
+                return (
+                  <View key={post.id} style={s.listPostCard}>
+                    <View style={s.listPostHeader}>
+                      <View style={[s.avatar, { backgroundColor: roleColor }]}>
+                        <Ionicons name="person" size={14} color={LI.white} />
+                      </View>
+                      <View>
+                        <Text style={s.listPostAuthor}>{user.fullName}</Text>
+                        <Text style={s.listPostTime}>{timeAgo(post.createdAt)}</Text>
+                      </View>
+                    </View>
+                    <Text style={s.listPostContent}>{post.textContent}</Text>
+                    {imgUrls.length > 0 && (
+                      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+                        {imgUrls.map((uri: string, i: number) => (
+                          <Image key={i} source={{ uri }} style={s.listPostImage} resizeMode="cover" />
+                        ))}
+                      </ScrollView>
+                    )}
+                    <View style={s.listPostFooter}>
+                      <View style={s.listPostStat}>
+                        <Ionicons name="thumbs-up" size={14} color={LI.blue} />
+                        <Text style={s.listPostStatText}>{post.likesCount}</Text>
+                      </View>
+                      <View style={s.listPostStat}>
+                        <Ionicons name="chatbubble-outline" size={13} color={LI.textSecondary} />
+                        <Text style={s.listPostStatText}>{post.commentsCount}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+      </Animated.View>
     </ScrollView>
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  loadingContainer: { flex: 1, backgroundColor: Colors.bgDark, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  container: { flex: 1, backgroundColor: LI.bgLight },
+  loadingContainer: { flex: 1, backgroundColor: LI.bgLight, alignItems: 'center', justifyContent: 'center', gap: 8 },
 
-  // ── Header ──────────────────────────────────────────────
-  headerSection: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-
-  avatarRing: {
-    width: 86, height: 86, borderRadius: 43,
-    borderWidth: 3, alignItems: 'center', justifyContent: 'center',
-    padding: 3,
-  },
-  avatarInner: {
-    width: 74, height: 74, borderRadius: 37,
-    backgroundColor: Colors.bgCard,
+  // Header
+  headerSection: { backgroundColor: LI.white, marginBottom: 8 },
+  bannerBar: { height: 80, backgroundColor: LI.blue },
+  headerContent: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  avatarLarge: {
+    width: 80, height: 80, borderRadius: 40,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 4, borderColor: LI.white, marginTop: -40,
   },
-
-  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  statItem: { alignItems: 'center' },
-  statNum: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
-  statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-
-  displayName: {
-    fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary,
-    marginTop: Spacing.sm,
-  },
+  displayName: { fontSize: 22, fontWeight: '800', color: LI.textDark, marginTop: 10 },
+  bioText: { fontSize: 14, color: LI.textSecondary, lineHeight: 20, marginTop: 6, textAlign: 'center', paddingHorizontal: 16 },
   roleBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 3,
-    borderRadius: BorderRadius.full, marginTop: 4,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 4, marginTop: 8,
   },
-  roleText: { fontSize: 11, fontWeight: '700' },
-  bioText: {
-    fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20,
-    marginTop: Spacing.sm,
-  },
-  infoTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  roleText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  infoTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, justifyContent: 'center' },
   infoTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  infoTagText: { fontSize: 12, color: Colors.textSecondary },
+  infoTagText: { fontSize: 13, color: LI.textSecondary },
 
-  // ── Action Buttons ──────────────────────────────────────
-  actionBtns: { flexDirection: 'row', gap: 8, marginTop: Spacing.md },
+  // Stats
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: LI.border },
+  statItem: { alignItems: 'center' },
+  statNum: { fontSize: 18, fontWeight: '800', color: LI.textDark },
+  statLabel: { fontSize: 12, color: LI.textSecondary, marginTop: 2 },
+
+  // Action Buttons
+  actionBtns: { flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' },
   primaryBtn: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: Spacing.sm, borderRadius: 8,
-    backgroundColor: Colors.primary,
+    paddingVertical: 10, borderRadius: 24, backgroundColor: LI.blue,
   },
   primaryBtnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: 'transparent', borderWidth: 1.5, borderColor: LI.textSecondary,
   },
-  primaryBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
-  primaryBtnTextOutline: { color: Colors.textPrimary },
+  primaryBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  primaryBtnTextOutline: { color: LI.textDark },
   secondaryBtn: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: Spacing.sm, borderRadius: 8,
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
+    paddingVertical: 10, borderRadius: 24,
+    borderWidth: 1.5, borderColor: LI.blue,
   },
-  secondaryBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
-  iconBtn: {
-    width: 38, height: 38, borderRadius: 8,
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  secondaryBtnText: { fontSize: 14, fontWeight: '700', color: LI.blue },
   editProfileBtn: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: Spacing.sm, borderRadius: 8,
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
-    marginTop: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 24,
+    borderWidth: 1.5, borderColor: LI.blue,
+    marginTop: 16, width: '100%',
   },
-  editProfileText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
+  editProfileText: { fontSize: 14, fontWeight: '700', color: LI.blue },
 
-  // ── Skills (Story Highlights style) ─────────────────────
-  skillsScroll: { marginTop: Spacing.md, marginBottom: Spacing.sm },
-  skillHighlight: { alignItems: 'center', width: 70 },
-  skillCircle: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: Colors.bgCard, borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  // Skills
+  sectionCard: {
+    backgroundColor: LI.white, padding: 16, marginBottom: 8,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: LI.border,
   },
-  skillEmoji: { fontSize: 24 },
-  skillName: { fontSize: 10, color: Colors.textMuted, marginTop: 4, textAlign: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: LI.textDark, marginBottom: 10 },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  skillChip: {
+    backgroundColor: LI.bgLight, paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 16, borderWidth: 1, borderColor: LI.border,
+  },
+  skillText: { fontSize: 13, color: LI.blue, fontWeight: '600' },
 
-  // ── Tab Bar ─────────────────────────────────────────────
+  // Tab Bar
   tabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    marginTop: Spacing.sm,
+    flexDirection: 'row', backgroundColor: LI.white,
+    borderBottomWidth: 1, borderBottomColor: LI.border,
   },
   tab: {
-    flex: 1, alignItems: 'center', paddingVertical: Spacing.sm,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 14, position: 'relative',
   },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
+  tabActive: {},
+  tabText: { fontSize: 14, fontWeight: '600', color: LI.textSecondary },
+  tabIndicator: {
+    position: 'absolute', bottom: 0, left: '20%', right: '20%',
+    height: 2.5, backgroundColor: LI.blue, borderRadius: 2,
+  },
 
-  // ── Grid View ───────────────────────────────────────────
+  // Grid View
   gridContainer: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: Spacing.md, paddingTop: 2,
-    gap: 2,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 2,
   },
   gridItem: {
     width: GRID_ITEM_SIZE, height: GRID_ITEM_SIZE,
-    backgroundColor: Colors.bgCard, position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: LI.bgLight, position: 'relative', overflow: 'hidden',
   },
   gridImage: { width: '100%', height: '100%' },
-  gridTextPost: {
-    flex: 1, padding: 8,
-    backgroundColor: Colors.bgCard,
-    justifyContent: 'center',
-  },
-  gridTextContent: { fontSize: 10, color: Colors.textSecondary, lineHeight: 14 },
-  multiIcon: {
-    position: 'absolute', top: 6, right: 6,
-  },
+  gridTextPost: { flex: 1, padding: 8, justifyContent: 'center' },
+  gridTextContent: { fontSize: 10, color: LI.textSecondary, lineHeight: 14 },
   gridOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', gap: 10, padding: 4,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center',
   },
   gridStat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   gridStatText: { fontSize: 10, color: '#fff', fontWeight: '600' },
 
-  // ── List View ───────────────────────────────────────────
+  // List View
   listPostCard: {
-    backgroundColor: Colors.bgCard, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: LI.white, padding: 16,
+    borderBottomWidth: 1, borderBottomColor: LI.border,
   },
-  listPostHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  listPostHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   avatar: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: Colors.primaryGlow, alignItems: 'center', justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
   },
-  listPostAuthor: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
-  listPostTime: { fontSize: 10, color: Colors.textMuted },
-  listPostContent: { fontSize: FontSize.md, color: Colors.textPrimary, lineHeight: 22, marginBottom: Spacing.sm },
+  listPostAuthor: { fontSize: 14, fontWeight: '700', color: LI.textDark },
+  listPostTime: { fontSize: 11, color: LI.textSecondary },
+  listPostContent: { fontSize: 14, color: LI.textDark, lineHeight: 21, marginBottom: 10 },
   listPostImage: {
-    width: SCREEN_WIDTH - Spacing.md * 4 - 2, height: 220,
-    borderRadius: BorderRadius.md, marginBottom: Spacing.sm,
-    backgroundColor: Colors.bgInput,
+    width: SCREEN_WIDTH - 32, height: 220,
+    borderRadius: 8, marginBottom: 10, backgroundColor: LI.bgLight,
   },
   listPostFooter: {
-    flexDirection: 'row', gap: Spacing.lg,
-    borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm,
+    flexDirection: 'row', gap: 16,
+    borderTopWidth: 1, borderTopColor: LI.border, paddingTop: 10,
   },
   listPostStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  listPostStatText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  listPostStatText: { fontSize: 13, color: LI.textSecondary },
 
-  // ── Empty ───────────────────────────────────────────────
-  emptyPosts: {
-    alignItems: 'center', paddingVertical: 60, gap: Spacing.sm,
-  },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '600', color: Colors.textMuted },
-  emptyText: { fontSize: FontSize.sm, color: Colors.textMuted },
+  // Empty
+  emptyPosts: { alignItems: 'center', paddingVertical: 60, gap: 8 },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: LI.textSecondary },
+  emptyText: { fontSize: 14, color: LI.textSecondary },
 });

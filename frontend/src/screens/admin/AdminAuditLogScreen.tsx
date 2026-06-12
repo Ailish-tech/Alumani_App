@@ -28,10 +28,10 @@ export default function AdminAuditLogScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}><Text style={s.title}>📋 Audit Log</Text></View>
-      <FlatList data={logs} keyExtractor={i => i.id} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={Colors.roleAdmin} />}
+      <FlatList data={logs} keyExtractor={i => i.id} contentContainerStyle={{ padding: 16, gap: 8 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetch} tintColor={'#004182'} />}
         renderItem={({ item }) => {
-          const cfg = ACTION_ICONS[item.action] || { icon: 'ellipse', color: Colors.textMuted };
+          const cfg = ACTION_ICONS[item.action] || { icon: 'ellipse', color: '#999999' };
           return (
             <View style={s.logCard}>
               <View style={[s.iconCircle, { backgroundColor: `${cfg.color}20` }]}>
@@ -46,21 +46,21 @@ export default function AdminAuditLogScreen() {
             </View>
           );
         }}
-        ListEmptyComponent={<View style={s.empty}><Ionicons name="clipboard-outline" size={48} color={Colors.textMuted} /><Text style={s.emptyText}>No audit logs</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><Ionicons name="clipboard-outline" size={48} color={'#999999'} /><Text style={s.emptyText}>No audit logs</Text></View>}
       />
     </View>
   );
 }
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDark },
-  header: { paddingHorizontal: Spacing.md, paddingTop: 56, paddingBottom: Spacing.sm },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  logCard: { flexDirection: 'row', gap: Spacing.md, backgroundColor: Colors.bgCard, borderRadius: BorderRadius.sm, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border },
+  container: { flex: 1, backgroundColor: '#F3F2EF' },
+  header: { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#191919' },
+  logCard: { flexDirection: 'row', gap: 16, backgroundColor: '#FFFFFF', borderRadius: 4, padding: 16, borderWidth: 1, borderColor: '#DCE6F1' },
   iconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  action: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary, textTransform: 'capitalize' },
-  meta: { fontSize: FontSize.xs, color: Colors.textMuted },
-  details: { fontSize: FontSize.xs, color: Colors.primary, fontStyle: 'italic' },
-  time: { fontSize: 10, color: Colors.textMuted },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  action: { fontSize: 13, fontWeight: '700', color: '#191919', textTransform: 'capitalize' },
+  meta: { fontSize: 11, color: '#999999' },
+  details: { fontSize: 11, color: '#0A66C2', fontStyle: 'italic' },
+  time: { fontSize: 10, color: '#999999' },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  emptyText: { fontSize: 15, color: '#999999' },
 });
