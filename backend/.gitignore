@@ -3,3 +3,6 @@ dist/
 .env
 firebase-service-account.json
 *.js.map
+server.log
+load-test-results.json
+.DS_Store

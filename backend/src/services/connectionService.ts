@@ -4,6 +4,7 @@ import { ConnectionEntity } from '../types/entities';
 import { ConnectionStatus } from '../types/enums';
 import { TABLE_NAME, buildKey, sortedUserPair, isoNow, generateId } from '../utils/helpers';
 import { ConflictError, NotFoundError, ValidationError } from '../utils/errors';
+import { cacheGet, cacheSet, cacheDelete } from './cacheService';
 
 /**
  * Send a connection request from requester to target.
@@ -47,6 +48,10 @@ export async function sendConnectionRequest(
     }
     throw err;
   }
+
+  // Invalidate connection caches for both users
+  await cacheDelete(`connections:accepted:${requesterId}`);
+  await cacheDelete(`connections:accepted:${targetId}`);
 
   return connection;
 }
@@ -97,6 +102,10 @@ export async function respondToConnection(
   if (!result.Items || result.Items.length === 0) {
     throw new NotFoundError('Connection');
   }
+
+  // Invalidate connection caches for both users
+  await cacheDelete(`connections:accepted:${responderId}`);
+  await cacheDelete(`connections:accepted:${otherUserId}`);
 
   return result.Items[0] as ConnectionEntity;
 }
@@ -156,8 +165,16 @@ export async function getConnectionsForUser(
 
 /**
  * Get IDs of all users connected (ACCEPTED) with a given user.
+ * Results are cached in Redis for 5 minutes to avoid hitting DynamoDB on every feed load.
  */
 export async function getAcceptedConnectionIds(userId: string): Promise<string[]> {
+  const cacheKey = `connections:accepted:${userId}`;
+  const cached = await cacheGet<string[]>(cacheKey);
+  if (cached) return cached;
+
   const connections = await getConnectionsForUser(userId, ConnectionStatus.ACCEPTED);
-  return connections.map((c) => (c.userA === userId ? c.userB : c.userA));
+  const ids = connections.map((c) => (c.userA === userId ? c.userB : c.userA));
+
+  await cacheSet(cacheKey, ids, 300); // cache for 5 minutes
+  return ids;
 }

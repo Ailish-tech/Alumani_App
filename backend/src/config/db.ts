@@ -1,5 +1,8 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
+import http from 'http';
+import https from 'https';
 import dotenv from 'dotenv';
 import path from 'path';
 import { memoryClient } from './memoryStore';
@@ -15,9 +18,15 @@ let usingMemory = false;
 const endpoint = process.env.DYNAMO_ENDPOINT || 'http://localhost:8000';
 
 try {
+  const requestHandler = new NodeHttpHandler({
+    httpAgent: new http.Agent({ keepAlive: true, maxSockets: 150 }),
+    httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 150 }),
+  });
+
   const client = new DynamoDBClient({
     region: process.env.AWS_REGION || 'us-east-1',
     endpoint,
+    requestHandler,
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'fakeAccessKeyId',
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'fakeSecretAccessKey',

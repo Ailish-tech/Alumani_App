@@ -1,6 +1,8 @@
 import { PutCommand, QueryCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoDb } from '../config/db';
 import { TABLE_NAME, buildKey, generateId, isoNow } from '../utils/helpers';
+import { syncUser, removeEvent, removeJob } from './typesenseSync';
+import { getUserById } from './userService';
 
 // ─── Platform Analytics ─────────────────────────────────────────────────────
 // Queries COLLECTION# partitions via GSI1 (SELECT COUNT) and ROLE# partitions.
@@ -80,6 +82,12 @@ export async function changeUserRole(userId: string, newRole: string) {
       ':u': isoNow(),
     },
   }));
+  try {
+    const user = await getUserById(userId);
+    await syncUser(user);
+  } catch (err) {
+    console.error('Failed to sync role change to Typesense:', err);
+  }
 }
 
 export async function getAllUsers(limit = 100) {
@@ -201,10 +209,12 @@ export async function deleteEntity(pk: string, sk: string) {
 
 export async function deleteEvent(eventId: string) {
   await deleteEntity(buildKey('EVENT', eventId), 'META');
+  await removeEvent(eventId);
 }
 
 export async function deleteJob(jobId: string) {
   await deleteEntity(buildKey('JOB', jobId), 'META');
+  await removeJob(jobId);
 }
 
 export async function deleteGroup(groupId: string) {

@@ -8,7 +8,7 @@ import {
   getFollowing,
   getFollowCounts,
 } from '../services/followService';
-import { getUserById } from '../services/userService';
+import { batchGetUsers } from '../utils/batchHelpers';
 
 /**
  * POST /api/follow/:userId — Follow a user
@@ -84,16 +84,12 @@ export async function getFollowersHandler(
 ): Promise<void> {
   try {
     const follows = await getFollowers(req.params.userId);
-    const users = await Promise.all(
-      follows.map(async (f) => {
-        try {
-          return await getUserById(f.followerId);
-        } catch {
-          return null;
-        }
-      })
-    );
-    res.json({ success: true, data: users.filter(Boolean) });
+    const followerIds = follows.map((f) => f.followerId);
+    const usersMap = await batchGetUsers(followerIds);
+    const users = followerIds
+      .map((id) => usersMap.get(id))
+      .filter(Boolean);
+    res.json({ success: true, data: users });
   } catch (error) {
     next(error);
   }
@@ -109,17 +105,14 @@ export async function getFollowingHandler(
 ): Promise<void> {
   try {
     const follows = await getFollowing(req.params.userId);
-    const users = await Promise.all(
-      follows.map(async (f) => {
-        try {
-          return await getUserById(f.followingId);
-        } catch {
-          return null;
-        }
-      })
-    );
-    res.json({ success: true, data: users.filter(Boolean) });
+    const followingIds = follows.map((f) => f.followingId);
+    const usersMap = await batchGetUsers(followingIds);
+    const users = followingIds
+      .map((id) => usersMap.get(id))
+      .filter(Boolean);
+    res.json({ success: true, data: users });
   } catch (error) {
     next(error);
   }
 }
+

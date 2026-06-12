@@ -1,6 +1,7 @@
 import { PutCommand, GetCommand, DeleteCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoDb } from '../config/db';
 import { TABLE_NAME, buildKey, generateId, isoNow } from '../utils/helpers';
+import { syncEvent, removeEvent } from './typesenseSync';
 
 // ─── Event Service ──────────────────────────────────────────────────────────────
 // GSI1: COLLECTION#EVENTS / DATE#<date>       — list all events
@@ -20,6 +21,7 @@ export async function createEvent(params: {
     rsvpCount: 0, createdAt: now,
   };
   await dynamoDb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+  await syncEvent(item);
   return item;
 }
 
@@ -68,4 +70,5 @@ export async function deleteEvent(eventId: string) {
   await dynamoDb.send(new DeleteCommand({
     TableName: TABLE_NAME, Key: { PK: buildKey('EVENT', eventId), SK: 'META' },
   }));
+  await removeEvent(eventId);
 }

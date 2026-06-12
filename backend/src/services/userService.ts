@@ -4,6 +4,9 @@ import { UserEntity } from '../types/entities';
 import { Role } from '../types/enums';
 import { TABLE_NAME, buildKey, generateId, isoNow } from '../utils/helpers';
 import { NotFoundError } from '../utils/errors';
+import { typesenseClient } from '../config/typesense';
+import { syncUser } from './typesenseSync';
+import { cacheGet, cacheSet, cacheDelete, CacheKeys } from './cacheService';
 
 /**
  * Create a new user profile in DynamoDB.
@@ -51,6 +54,8 @@ export async function createUser(params: {
     })
   );
 
+  await syncUser(user);
+
   return user;
 }
 
@@ -58,6 +63,10 @@ export async function createUser(params: {
  * Get a user profile by ID.
  */
 export async function getUserById(userId: string): Promise<UserEntity> {
+  const cacheKey = CacheKeys.userProfile(userId);
+  const cached = await cacheGet<UserEntity>(cacheKey);
+  if (cached) return cached;
+
   const result = await dynamoDb.send(
     new GetCommand({
       TableName: TABLE_NAME,
@@ -72,7 +81,9 @@ export async function getUserById(userId: string): Promise<UserEntity> {
     throw new NotFoundError('User', userId);
   }
 
-  return result.Item as UserEntity;
+  const user = result.Item as UserEntity;
+  await cacheSet(cacheKey, user, 3600); // cache for 1 hour
+  return user;
 }
 
 /**
@@ -181,7 +192,12 @@ export async function updateProfile(
 
   try {
     const result = await dynamoDb.send(new UpdateCommand(updateParams));
-    return (result.Attributes as UserEntity) || (await getUserById(userId));
+    const updatedUser = (result.Attributes as UserEntity) || (await getUserById(userId));
+    
+    await cacheDelete(CacheKeys.userProfile(userId));
+    await syncUser(updatedUser);
+    
+    return updatedUser;
   } catch (err: any) {
     console.error('[updateProfile] DynamoDB error for user', userId, ':', err.message);
     // If condition check failed, user doesn't exist
@@ -217,6 +233,8 @@ export async function incrementMentorStats(mentorId: string): Promise<void> {
       },
     })
   );
+
+  await cacheDelete(CacheKeys.userProfile(mentorId));
 }
 
 /**
@@ -237,6 +255,14 @@ export async function setUserBanStatus(userId: string, isBanned: boolean): Promi
       },
     })
   );
+
+  try {
+    await cacheDelete(CacheKeys.userProfile(userId));
+    const user = await getUserById(userId);
+    await syncUser(user);
+  } catch (err) {
+    console.error('Failed to sync user ban status to Typesense', err);
+  }
 }
 
 /**
@@ -247,58 +273,29 @@ export async function searchUsers(params: {
   query?: string;
   role?: string;
   limit?: number;
-}): Promise<UserEntity[]> {
-  const { query, role, limit = 30 } = params;
+}): Promise<any[]> {
+  const { query = '*', role, limit = 30 } = params;
 
-  // Build filter: always start with entityType = USER
-  const filterParts: string[] = ['entityType = :entityType', 'SK = :sk'];
-  const exprValues: Record<string, unknown> = {
-    ':entityType': 'USER',
-    ':sk': 'PROFILE',
-  };
-  const exprNames: Record<string, string> = {};
-
-  // Role filter
+  let filter_by = 'isBanned:false';
   if (role) {
-    filterParts.push('#role = :role');
-    exprValues[':role'] = role;
-    exprNames['#role'] = 'role';
+    filter_by += ` && role:=${role}`;
   }
 
-  const result = await dynamoDb.send(
-    new ScanCommand({
-      TableName: TABLE_NAME,
-      FilterExpression: filterParts.join(' AND '),
-      ExpressionAttributeValues: exprValues,
-      ...(Object.keys(exprNames).length > 0 && {
-        ExpressionAttributeNames: exprNames,
-      }),
-      Limit: 200, // scan limit (pre-filter)
-    })
-  );
+  try {
+    const searchResult = await typesenseClient
+      .collections('users')
+      .documents()
+      .search({
+        q: query,
+        query_by: 'fullName,email,domain,skills',
+        filter_by,
+        per_page: limit,
+      });
 
-  let users = (result.Items || []) as UserEntity[];
-
-  // Client-side search by query (case-insensitive contains on name, id, domain, skills)
-  if (query) {
-    const q = query.toLowerCase();
-    users = users.filter((u) => {
-      const searchable = [
-        u.fullName || '',
-        u.id || '',
-        u.domain || '',
-        u.email || '',
-        ...(u.skills || []),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(q);
-    });
+    return searchResult.hits?.map((hit) => hit.document) || [];
+  } catch (error) {
+    console.error('Typesense search error, falling back to empty array:', error);
+    return [];
   }
-
-  // Exclude banned users and limit results
-  return users
-    .filter((u) => !u.isBanned)
-    .slice(0, limit);
 }
 

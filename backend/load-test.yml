@@ -1,0 +1,29 @@
+config:
+  target: "http://localhost:3001"
+  phases:
+    - duration: 30
+      arrivalRate: 20
+      name: "Phase 1: Warmup & Sustained"
+    - duration: 30
+      arrivalRate: 40
+      name: "Phase 2: Spike"
+  processor: "./load-test-helpers.js"
+  environments:
+    dev:
+      target: "http://localhost:3001"
+
+scenarios:
+  - name: "Typical User Flow"
+    weight: 100
+    beforeRequest: "setRandomAuthHeader"
+    flow:
+      - get:
+          url: "/api/health"
+      - get:
+          url: "/api/posts/feed"
+      - get:
+          url: "/api/posts/saved"
+      - get:
+          url: "/api/follow/test-user-1/followers"
+      - get:
+          url: "/api/auth/user/test-user-1"
